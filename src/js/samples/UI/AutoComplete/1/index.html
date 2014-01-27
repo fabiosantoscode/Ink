@@ -1,0 +1,84 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8">
+
+        <title>InkJS - AutoComplete samples</title>
+
+        <!--[if IE lte 7]>
+            <script src="../../../../../../dist/js/html5shiv.js" type="text/javascript"></script>
+            <link href="../../../../../../dist/css/ink-ie7.css" rel="stylesheet" type="text/css">
+        <![endif]-->
+
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <meta name="viewport" content="width=device-width; initial-scale=1.0; maximum-scale=1.0; user-scalable=0;">
+
+        <link rel="stylesheet" type="text/css" href="../../../../../../dist/css/ink.css">
+
+        <script type="text/javascript" src="../../../../Ink/1/lib.js"></script>
+        <script>
+            Ink.setPath('Ink', '../../../../Ink/');
+        </script>
+
+        <style>
+            pre.prettyprint{
+                font-size: 0.75em;
+            }
+        </style>
+    </head>
+
+    <body>
+        <div class="ink-container ink-grid">
+            <h1>AutoComplete Samples - InkJS</h1>
+
+            <style type="text/css">
+
+            </style>
+
+            <h2>Intro and basic concepts</h2>
+
+            <p><code>Ink.UI.AutoComplete</code> is a generic component for showing partial content, given that you have a way to "advance" and reveal the rest of your content. You can use this for a slideshow, showing one <code>slide</code> at a time, or for some kind of gallery or link collection, by showing more than one <code>slide</code> at a time.</p>
+
+            <p>There are two important elements involved: the <code>stage</code> element, which contains slides and is important because of slide sizing, and the <code>slide</code>s, which are direct children of the stage. Slides are organized into <code>page</code>s. When the carousel changes pages, this is unrelated to the slides inside.</p>
+
+            <hr>
+
+            <h2></h2>
+
+            <div id="auto-advance" class="ink-carousel">
+            </div>
+
+            <script type="text/javascript">
+                Ink.requireModules(['Ink.UI.AutoComplete_1'], function(AutoComplete) {
+                });
+            </script>
+
+            <hr>
+
+            <h1>Autocomplete sample</h1>
+            
+            <label for="autocomplete_text">Start typing a car brand:</label>
+            <div>
+                <input type="text" id="autocomplete_text" value="" size="50">
+                <div id="suggestions"></div>
+            </div>
+
+            <br/><br/>
+            
+            Choice was: <span id="result"></span>
+            
+            <script type="text/javascript">
+                Ink.requireModules(['Ink.UI.AutoComplete_1'], function(AutoComplete) {
+                    new AutoComplete('#autocomplete_text', {
+                        target:			'#suggestions',
+                        suggestionsURI:	'autocomplete-suggestions.json',
+                        allowNewValue:	true,
+                        onSelectCallBack: function(txtSelected) {
+                            result.innerHTML = txtSelected;
+                        }
+                    });
+                });
+            </script>
+        </div>
+    </body>
+</html>
