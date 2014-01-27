@@ -1,4 +1,4 @@
-Ink.requireModules(['Ink.UI.AutoComplete_1', 'Ink.Dom.Element_1'], function (AutoComplete, InkElement) {
+Ink.requireModules(['Ink.UI.AutoComplete_1', 'Ink.Dom.Element_1', 'Ink.Dom.Css_1'], function (AutoComplete, InkElement, Css) {
     function makeContainer() {
         return InkElement.create('div', {
             className: 'ink-autocomplete',
@@ -11,19 +11,72 @@ Ink.requireModules(['Ink.UI.AutoComplete_1', 'Ink.Dom.Element_1'], function (Aut
     function testAutoComplete(name, testBack, options) {
         test(name, function ()  {
             var container = makeContainer();
-            var autocomplete = Ink.ss('.autocomplete-nav li', container);
-            var tabComponent = new AutoComplete(container, options || {});
-            testBack(tabComponent, container, autocomplete);
+            var input = Ink.s('input', container);
+            var target = Ink.s('.target', container);
+            var tabComponent = new AutoComplete(input, Ink.extendObj({
+                target: target,
+                suggestions: ['audi', 'mitsubishi', 'umm']
+            }, options || {}));
+            testBack(
+                tabComponent,
+                container,
+                tabComponent._element,
+                tabComponent._target);
         });
     }
 
-    testAutoComplete('_findLinkByHref', function (tabComponent, container, autocomplete) {
-        var link = autocomplete[0].children[0];
-        var linkWithFullUrl = autocomplete[1].children[0];
-        linkWithFullUrl.setAttribute('href', pathHere + '#someth');
+    test('choosing a target: options.target when available', function () {
+        var container = makeContainer();
+        var target = Ink.s('.target', container);
+        var autocomplete = new AutoComplete(Ink.s('input', container), { target: target });
+        strictEqual(autocomplete._target, target);
+    });
 
-        ok(link && linkWithFullUrl);
-        strictEqual(tabComponent._findLinkByHref('someth'), linkWithFullUrl);
-        strictEqual(tabComponent._findLinkByHref('home'), link);
+    test('choosing a target: element created if unavailable', function () {
+        var container = makeContainer();
+        var autocomplete = new AutoComplete(Ink.s('input', container), { target: null });
+        ok(autocomplete._target);
+    });
+
+    testAutoComplete('target element gets class names added', function (_, __, ___, target) {
+        ok(Css.hasClassName(target, 'ink-dropdown'), 'target gets ink-dropdown class');
+        ok(Css.hasClassName(target, 'autocomplete'), 'target gets autocomplete class');
+        ok(Css.hasClassName(target, 'hide-all'), 'target gets hide-all class');
+    });
+
+    function typeSomethingAndTest(name, cb, options) {
+        testAutoComplete('type a few characters, suggestions field pops up', function (component, container, input, target) {
+            if (options.before) options.before.apply(null, arguments);
+
+            sinon.spy(component, '_openSuggester');
+
+            stop();
+
+            Syn.type('aud', input, function () {
+                ok(component._openSuggester.called, '_openSuggester called when enough characters typed');
+                ok(!Css.hasClassName(target, 'hide-all'), 'hide-all class removed');
+                ok(target.getElementsByTagName('li').length, 'target has new <li> elements');
+                start();
+            });
+        }, options);
+    }
+
+    typeSomethingAndTest('type a few characters, AJAX request happens', function() {
+
+    });
+
+    typeSomethingAndTest('type a few characters, suggestions field pops up', function (component, __, input, target) {
+        expect(2);
+        ok(Css.hasClassName(target, 'hide-all'));
+        sinon.spy(component, '_openSuggester');
+
+        stop();
+
+        Syn.type('aud', input, function () {
+            ok(component._openSuggester.called, '_openSuggester called when enough characters typed');
+            ok(!Css.hasClassName(target, 'hide-all'), 'hide-all class removed');
+            ok(target.getElementsByTagName('li').length, 'target has new <li> elements');
+            start();
+        });
     });
 });

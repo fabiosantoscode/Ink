@@ -1,4 +1,4 @@
-Ink.createModule('Ink.UI.AutoComplete', '1', ['Ink.UI.Common_1', 'Ink.Dom.Element_1', 'Ink.Dom.Event_1', 'Ink.Net.Ajax_1'], function (Common, InkElement, InkEvent, Ajax) {
+Ink.createModule('Ink.UI.AutoComplete', '1', ['Ink.UI.Common_1', 'Ink.Dom.Element_1', 'Ink.Dom.Css_1', 'Ink.Dom.Event_1', 'Ink.Util.Url_1', 'Ink.Net.Ajax_1'], function (Common, InkElement, Css, InkEvent, Url, Ajax) {
 'use strict';
 
 /**
@@ -17,13 +17,14 @@ AutoComplete.prototype = {
      */
     _init: function(elem, options) {
         this._options = Ink.extendObj({
-            target: false,
-            suggestionsURI: false,
-            classNameSelected:'selected',
-            suggestionsObject: false,
+            target: null,
+            suggestionsURI: null,
+            getSuggestionsUri: null,
+            transformResponse: null,
+            classNameSelected: 'selected',
+            suggestionsObject: null,
             resultLimit: 10,
-            minLength: 1,
-            debug: false
+            minLength: 1
         }, options || {});
 
         if (!(this._options.suggestionsURI || !this._options.suggestionsObject)) {
@@ -32,14 +33,22 @@ AutoComplete.prototype = {
         }
 
         this._element = Common.elOrSelector(elem);
-        this._options.target = Common.elOrSelector(this._options.target);
+        if (!this._options.target) {
+            this._target = this._makeTarget();
+        } else {
+            this._target = Common.elOrSelector(this._options.target);
+        }
 
-        this.suggestPlaceElm = Ink.s(this._options.suggestPlace) || InkElement.create('div');
+        Css.addClassName(this._target, 'ink-dropdown autocomplete hide-all');
 
         this._addEvents();
     },
 
     _setElmVars: function() {
+    },
+
+    _makeTarget: function () {
+        return InkElement.create('div');
     },
 
     _addEvents: function() {
@@ -65,7 +74,7 @@ AutoComplete.prototype = {
 
             if (value.length >= this._options.minLength) {
                 // get suggestions based on name
-                this.suggestPlaceElm.innerHTML = '';
+                this._target.innerHTML = '';
                 this._submitData(value);
             } else {
                 if (this._isSuggestActive()) {
@@ -101,10 +110,17 @@ AutoComplete.prototype = {
 
         var input = this._getInputValue();
 
+        var suggestionsUri = this._options.suggestionsUri;
+        if (this._options.getSuggestionsURI) {
+            suggestionsUri = this._options.getSuggestionsUri(input, this);
+        } else {
+            var url = Url.parseUrl(suggestionsUri);
+            suggestionsUri = Url.format(Ink.extendObj({ name: input}, url));
+        }
+        
         if(!this._options.suggestionsObject){
             this.ajaxRequest = new Ajax(this._options.suggestionsURI, {
                 method: 'get',
-                parameters: 'name='+encodeURIComponent(input)+'',
                 onSuccess: Ink.bindMethod(this, '_onSubmitSuccess'),
                 onFailure: Ink.bindMethod(this, '_onSubmitFailure')
             });
@@ -146,9 +162,14 @@ AutoComplete.prototype = {
 
     _onSubmitSuccess: function(obj) {
         if(obj != null) {
-            var req = obj.responseText.evalJSON();
+            var req;
 
-            //Ink.ss('debug').innerHTML = '<pre>'+SAPO.Utility.Dumper.returnDump(req)+'</pre>';
+            if (this._options.transformResponse) {
+                req = this._options.transformResponse(obj, this);
+            } else {
+                req = obj.responseText || obj.responseJSON;
+            }
+
             if(!req.error) {
                 this._writeResult(req.suggestions);
             }
@@ -160,7 +181,7 @@ AutoComplete.prototype = {
     },
 
     _clearResults: function() {
-        var aUl = this.suggestPlaceElm.getElementsByTagName('ul');
+        var aUl = this._target.getElementsByTagName('ul');
         if(aUl.length > 0) {
             aUl[0].parentNode.removeChild(aUl);
         }
@@ -174,6 +195,7 @@ AutoComplete.prototype = {
 
         //var str = '';
         var ul = document.createElement('ul');
+        Css.addClassName(ul, 'dropdown-menu');
 
         var li = false;
         var a = false;
@@ -218,23 +240,23 @@ AutoComplete.prototype = {
             this._openSuggester();
         }
 
-        //this.suggestPlaceElm.innerHTML = str;
-        this.suggestPlaceElm.appendChild(ul);
+        //this._target.innerHTML = str;
+        this._target.appendChild(ul);
     },
 
     _closeSuggester: function() {
-        this.suggestPlaceElm.style.display = 'none';
+        Css.addClassName(this._target, 'hide-all');
         this.suggestActive = false;
     },
 
     _openSuggester: function() {
-        this.suggestPlaceElm.style.display = 'block';
+        Css.removeClassName(this._target, 'hide-all');
         this.suggestActive = true;
     },
 
     _onSuggesterEnter: function() {
         if(this._isSuggestActive()) {
-            var ul = this.suggestPlaceElm.getElementsByTagName('UL')[0] || false;
+            var ul = this._target.getElementsByTagName('UL')[0] || false;
             if(ul) {
                 var aLi = ul.getElementsByTagName('LI');
                 var total = aLi.length;
@@ -260,7 +282,7 @@ AutoComplete.prototype = {
 
     setMouseSelected: function(value) {
         if(this._isSuggestActive()) {
-            var ul = this.suggestPlaceElm.getElementsByTagName('UL')[0] || false;
+            var ul = this._target.getElementsByTagName('UL')[0] || false;
             if(ul) {
                 var aLi = ul.getElementsByTagName('LI');
                 var total = aLi.length;
@@ -285,7 +307,7 @@ AutoComplete.prototype = {
 
     _goSuggesterDown: function() {
         if(this._isSuggestActive()) {
-            var ul = this.suggestPlaceElm.getElementsByTagName('UL')[0] || false;
+            var ul = this._target.getElementsByTagName('UL')[0] || false;
             if(ul) {
                 var aLi = ul.getElementsByTagName('LI');
                 var total = aLi.length;
@@ -319,7 +341,7 @@ AutoComplete.prototype = {
 
     _goSuggesterUp: function() {
         if(this._isSuggestActive()) {
-            var ul = this.suggestPlaceElm.getElementsByTagName('UL')[0] || false;
+            var ul = this._target.getElementsByTagName('UL')[0] || false;
             if(ul) {
                 var aLi = ul.getElementsByTagName('LI');
                 var total = aLi.length;
