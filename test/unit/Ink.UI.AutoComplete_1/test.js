@@ -28,13 +28,13 @@ Ink.requireModules(['Ink.UI.AutoComplete_1', 'Ink.Dom.Element_1', 'Ink.Dom.Css_1
     test('choosing a target: options.target when available', function () {
         var container = makeContainer();
         var target = Ink.s('.target', container);
-        var autocomplete = new AutoComplete(Ink.s('input', container), { target: target });
+        var autocomplete = new AutoComplete(Ink.s('input', container), { target: target, suggestions: [] });
         strictEqual(autocomplete._target, target);
     });
 
     test('choosing a target: element created if unavailable', function () {
         var container = makeContainer();
-        var autocomplete = new AutoComplete(Ink.s('input', container), { target: null });
+        var autocomplete = new AutoComplete(Ink.s('input', container), { target: null, suggestions: [] });
         ok(autocomplete._target);
     });
 
@@ -45,38 +45,38 @@ Ink.requireModules(['Ink.UI.AutoComplete_1', 'Ink.Dom.Element_1', 'Ink.Dom.Css_1
     });
 
     function typeSomethingAndTest(name, cb, options) {
-        testAutoComplete('type a few characters, suggestions field pops up', function (component, container, input, target) {
-            if (options.before) options.before.apply(null, arguments);
-
-            sinon.spy(component, '_openSuggester');
+        testAutoComplete(name, function (component, container, input, target) {
+            var args = [].slice.call(arguments);
+            if (options.before) options.before.apply(null, args);
 
             stop();
 
             Syn.type('aud', input, function () {
-                ok(component._openSuggester.called, '_openSuggester called when enough characters typed');
-                ok(!Css.hasClassName(target, 'hide-all'), 'hide-all class removed');
-                ok(target.getElementsByTagName('li').length, 'target has new <li> elements');
-                start();
+                cb.apply(null, args);
             });
         }, options);
     }
 
-    typeSomethingAndTest('type a few characters, AJAX request happens', function() {
-
+    typeSomethingAndTest('type a few characters, AJAX request happens, if suggestionsURI is given', function(component, container, input, target) {
+        var spy = Ink.Net.Ajax_1.prototype.init;
+        ok(spy.called);
+        spy.restore();
+        start();
+    }, {
+        before: function (comp) {
+            sinon.spy(Ink.Net.Ajax_1.prototype, 'init');
+        },
+        suggestions: null,
+        suggestionsURI: 'autocomplete-suggestions.json'
     });
 
     typeSomethingAndTest('type a few characters, suggestions field pops up', function (component, __, input, target) {
-        expect(2);
+        ok(component._openSuggester.called, '_openSuggester called when enough characters typed');
+        ok(!Css.hasClassName(target, 'hide-all'), 'hide-all class removed');
+        ok(target.getElementsByTagName('li').length, 'target has new <li> elements');
+        start();
+    }, { before: function (comp, _, __, target) {
         ok(Css.hasClassName(target, 'hide-all'));
-        sinon.spy(component, '_openSuggester');
-
-        stop();
-
-        Syn.type('aud', input, function () {
-            ok(component._openSuggester.called, '_openSuggester called when enough characters typed');
-            ok(!Css.hasClassName(target, 'hide-all'), 'hide-all class removed');
-            ok(target.getElementsByTagName('li').length, 'target has new <li> elements');
-            start();
-        });
-    });
+        sinon.spy(comp, '_openSuggester');
+    }});
 });

@@ -22,13 +22,14 @@ AutoComplete.prototype = {
             getSuggestionsUri: null,
             transformResponse: null,
             classNameSelected: 'selected',
-            suggestionsObject: null,
+            suggestions: null,
             resultLimit: 10,
             minLength: 1
         }, options || {});
 
-        if (!(this._options.suggestionsURI || !this._options.suggestionsObject)) {
-            Ink.error("É obrigatório especificar o endpoint ou o objecto global para carregamento das sugestões!");
+        if (!(this._options.suggestionsURI || this._options.suggestions || this._options.getSuggestionsURI)) {
+            Ink.error('Ink.UI.AutoComplete: You must specify the endpoint or array for autocomplete suggestions!');
+            Ink.log('Use the suggestionsURI (URI string), suggestions (array), or getSuggestionsURI (function (typedCharacters) {}) options.');
             return;
         }
 
@@ -118,11 +119,11 @@ AutoComplete.prototype = {
             suggestionsUri = Url.format(Ink.extendObj({ name: input}, url));
         }
         
-        if(!this._options.suggestionsObject){
+        if(!this._options.suggestions){
             this.ajaxRequest = new Ajax(this._options.suggestionsURI, {
                 method: 'get',
-                onSuccess: Ink.bindMethod(this, '_onSubmitSuccess'),
-                onFailure: Ink.bindMethod(this, '_onSubmitFailure')
+                onSuccess: Ink.bindMethod(this, '_onAjaxSuccess'),
+                onFailure: Ink.bindMethod(this, '_onAjaxFailure')
             });
         } else {
            this._searchSuggestions(input);
@@ -136,7 +137,7 @@ AutoComplete.prototype = {
 
             var curSuggest;
 
-            var obj = this._options.suggestionsObject;
+            var obj = this._options.suggestions;
 
             var result = [];
 
@@ -160,24 +161,24 @@ AutoComplete.prototype = {
         }
     },
 
-    _onSubmitSuccess: function(obj) {
+    _onAjaxSuccess: function(obj) {
         if(obj != null) {
-            var req;
+            var res;
 
             if (this._options.transformResponse) {
-                req = this._options.transformResponse(obj, this);
+                res = this._options.transformResponse(obj, this);
             } else {
-                req = obj.responseText || obj.responseJSON;
+                res = { suggestions: obj.responseJSON, error: false };
             }
 
-            if(!req.error) {
-                this._writeResult(req.suggestions);
+            if(!res.error) {
+                this._writeResult(res.suggestions);
             }
         }
     },
 
-    _onSubmitFailure: function(err) {
-        Ink.error('[Ink.UI.AutoComplete_1] Submit failure: ', err);
+    _onAjaxFailure: function(err) {
+        Ink.error('[Ink.UI.AutoComplete_1] Ajax failure: ', err);
     },
 
     _clearResults: function() {
