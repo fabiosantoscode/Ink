@@ -75,7 +75,7 @@ AutoComplete.prototype = {
 
             if (value.length >= this._options.minLength) {
                 // get suggestions based on name
-                this._target.innerHTML = '';
+                this._clearResults();
                 this._submitData(value);
             } else {
                 if (this._isSuggestActive()) {
@@ -102,15 +102,19 @@ AutoComplete.prototype = {
         return !!this.suggestActive;
     },
 
+    // TODO function name change
     _submitData: function() {
-        if(this.ajaxRequest) {
-            // close connection
-            try { this.ajaxRequest.transport.abort(); } catch (e) {}
-            this.ajaxRequest = null;
-        }
-
         var input = this._getInputValue();
 
+        if(this._options.suggestions){
+            this._searchSuggestions(input);
+        } else {
+            this._getSuggestionsThroughAjax(input);
+        }
+    },
+
+
+    _getSuggestionsThroughAjax: function (input) {
         var suggestionsUri = this._options.suggestionsUri;
         if (this._options.getSuggestionsURI) {
             suggestionsUri = this._options.getSuggestionsUri(input, this);
@@ -118,44 +122,42 @@ AutoComplete.prototype = {
             var url = Url.parseUrl(suggestionsUri);
             suggestionsUri = Url.format(Ink.extendObj({ name: input}, url));
         }
-        
-        if(!this._options.suggestions){
-            this.ajaxRequest = new Ajax(this._options.suggestionsURI, {
-                method: 'get',
-                onSuccess: Ink.bindMethod(this, '_onAjaxSuccess'),
-                onFailure: Ink.bindMethod(this, '_onAjaxFailure')
-            });
-        } else {
-           this._searchSuggestions(input);
+        if(this.ajaxRequest) {
+            // close connection
+            try { this.ajaxRequest.transport.abort(); } catch (e) {}
+            this.ajaxRequest = null;
         }
+
+        this.ajaxRequest = new Ajax(this._options.suggestionsURI, {
+            method: 'get',
+            onSuccess: Ink.bindMethod(this, '_onAjaxSuccess'),
+            onFailure: Ink.bindMethod(this, '_onAjaxFailure')
+        });
     },
 
-    _searchSuggestions: function(str) {
-        if(str !== '') {
+    _searchSuggestions: function(input) {
+        if (!input) {
+            this._closeSuggester();
+            return;
+        }
 
-            var re = new RegExp("^"+str+"", "i");
+        var re = new RegExp("^"+input+"", "i");
+        var curSuggest;
+        var obj = this._options.suggestions;
+        var result = [];
 
-            var curSuggest;
+        var totalSuggestions = obj.length;
+        for(var i=0; i < totalSuggestions; i++) {
+            curSuggest = obj[i];
 
-            var obj = this._options.suggestions;
-
-            var result = [];
-
-            var totalSuggestions = obj.length;
-            for(var i=0; i < totalSuggestions; i++) {
-                curSuggest = obj[i];
-
-                //if(re.test(curPath)) {
-                if(curSuggest.match(re)) {
-                    result.push(curSuggest);
-                }
+            //if(re.test(curPath)) {
+            if(curSuggest.match(re)) {
+                result.push(curSuggest);
             }
+        }
 
-            if(result.length>0) {
-                this._writeResult(result);
-            } else {
-                this._closeSuggester();
-            }
+        if(result.length>0) {
+            this._writeResult(result);
         } else {
             this._closeSuggester();
         }
