@@ -37,44 +37,86 @@
 
             <h2>Intro and basic concepts</h2>
 
-            <p><code>Ink.UI.AutoComplete</code> is a generic component for showing partial content, given that you have a way to "advance" and reveal the rest of your content. You can use this for a slideshow, showing one <code>slide</code> at a time, or for some kind of gallery or link collection, by showing more than one <code>slide</code> at a time.</p>
+            <p><code>Ink.UI.AutoComplete</code> is for creating autocomplete suggestions in your <code>input</code> elements, which are relevant to your application.</p>
 
-            <p>There are two important elements involved: the <code>stage</code> element, which contains slides and is important because of slide sizing, and the <code>slide</code>s, which are direct children of the stage. Slides are organized into <code>page</code>s. When the carousel changes pages, this is unrelated to the slides inside.</p>
+            <p>You need to give it some suggestions, or a way to get suggestions. There are a couple of ways to do this:</p>
 
-            <hr>
+            <ul>
+                <li>Passing it an <code>Array</code> of everything which could be typed in <code>options.suggestions</code>. This is the simplest way to do this, but you need to have a list of every valid input around</li>
+                <li>Passing a URI for a JSON endpoint which responds with suggestions. You can use the <code>suggestionsURI</code>, <code>suggestionsURIParam</code>, and the <code>getSuggestionsURI</code> options.</li>
+            </ul>
 
-            <h2></h2>
+            <h2>AutoComplete with a local Array of suggestions</h2>
 
-            <div id="auto-advance" class="ink-carousel">
+            <div class="ink-form">
+                <div class="control-group">
+                    <div class="control">
+                        <label for="autocomplete_arr">Start typing a number ("one", "two", "three", ...):</label>
+                        <input type="text" id="autocomplete_arr" value="">
+                    </div>
+                </div>
             </div>
 
             <script type="text/javascript">
                 Ink.requireModules(['Ink.UI.AutoComplete_1'], function(AutoComplete) {
+                    var suggestionsArray = [
+                        'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Pi', 'A hundred', 'One hundred'];
+                    new AutoComplete('#autocomplete_arr', {
+                        suggestions: suggestionsArray,
+                        minText: 1
+                    });
                 });
             </script>
 
+
             <hr>
 
-            <h1>Autocomplete sample</h1>
-            
-            <label for="autocomplete_text">Start typing a car brand:</label>
-            <div>
-                <input type="text" id="autocomplete_text" value="" size="50">
-                <div id="suggestions"></div>
+            <h2>AutoComplete with suggestions from a JSON endpoint</h2>
+
+            <p>The request will be made to the endpoint URI passed in the <code>suggestionsURI</code> option. The URI parameter with the user input will be chosen by you in the <code>suggestionsURIParam</code> option.</p>
+
+            <p>Note: In this sample, the request is being made to a static JSON file, so you don't see filtering.</p>
+
+            <div class="ink-form">
+                <div class="control-group">
+                    <div class="control">
+                        <label for="autocomplete_ajax">Start typing a car brand:</label>
+                        <input type="text" id="autocomplete_ajax" value="" size="50">
+                    </div>
+                </div>
             </div>
 
-            <br/><br/>
+            <script type="text/javascript">
+                Ink.requireModules(['Ink.UI.AutoComplete_1'], function(AutoComplete) {
+                    new AutoComplete('#autocomplete_ajax', {
+                        suggestionsURI:	'autocomplete-suggestions.json',
+                        suggestionsURIParam: 'input'
+                    });
+                });
+            </script>
+
+
+            <hr>
+
+            <h2>onSelect callback</h2>
+
+            <div class="ink-form">
+                <div class="control-group">
+                    <div class="control">
+                        <label for="autocomplete_text">Type something:</label>
+                        <input type="text" id="autocomplete_text" value="" size="50">
+                    </div>
+                </div>
+            </div>
             
             Choice was: <span id="result"></span>
             
             <script type="text/javascript">
                 Ink.requireModules(['Ink.UI.AutoComplete_1'], function(AutoComplete) {
                     new AutoComplete('#autocomplete_text', {
-                        target:			'#suggestions',
                         suggestionsURI:	'autocomplete-suggestions.json',
-                        allowNewValue:	true,
-                        onSelectCallBack: function(txtSelected) {
-                            result.innerHTML = txtSelected;
+                        onSelect: function(selected) {
+                            Ink.i('result').innerHTML = selected;
                         }
                     });
                 });
