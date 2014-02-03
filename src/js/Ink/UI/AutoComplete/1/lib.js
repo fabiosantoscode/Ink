@@ -1,4 +1,5 @@
 Ink.createModule('Ink.UI.AutoComplete', '1', ['Ink.UI.Common_1', 'Ink.Dom.Element_1', 'Ink.Dom.Css_1', 'Ink.Dom.Event_1', 'Ink.Util.Url_1', 'Ink.Net.Ajax_1'], function (Common, InkElement, Css, InkEvent, Url, Ajax) {
+/*jshint maxcomplexity: 4*/
 'use strict';
 
 /**
@@ -212,13 +213,9 @@ AutoComplete.prototype = {
                 a.title = aSuggestions[i];
 
                 a.onclick = Ink.bind(function(value) {
-                    this.setChoosedValue(value);
+                    this.setValue(value);
                     this._closeSuggester();
                     return false;
-                }, this, aSuggestions[i]);
-
-                a.onmouseover = Ink.bind(function(value) {
-                    this.setMouseSelected(value);
                 }, this, aSuggestions[i]);
 
                 a.innerHTML = aSuggestions[i];
@@ -268,7 +265,7 @@ AutoComplete.prototype = {
                     if(aLi[i].childNodes[0].className == this._options.classNameSelected) {
                         aLi[i].childNodes[0].className = '';
                         var value = aLi[i].childNodes[0].innerHTML;
-                        this.setChoosedValue(value);
+                        this.setValue(value);
                         break;
                     }
                     i++;
@@ -283,97 +280,9 @@ AutoComplete.prototype = {
         }
     },
 
-    setMouseSelected: function(value) {
-        if(this._isSuggestActive()) {
-            var ul = this._target.getElementsByTagName('UL')[0] || false;
-            if(ul) {
-                var aLi = ul.getElementsByTagName('LI');
-                var total = aLi.length;
-                var i = 0;
-                while(i < total) {
-                    if(aLi[i].childNodes[0].className == this._options.classNameSelected) {
-                        aLi[i].childNodes[0].className = '';
-                    }
-                    if(aLi[i].childNodes[0].title == value) {
-                        aLi[i].childNodes[0].className = this._options.classNameSelected;
-                    }
-                    i++;
-                }
-            }
-        }
-    },
-
-    setChoosedValue: function(value) {
+    setValue: function(value) {
         //value = value.replace(/([^@]+)@(.*)/, "$1");
         this._element.value = value;
-    },
-
-    _goSuggesterDown: function() {
-        if(this._isSuggestActive()) {
-            var ul = this._target.getElementsByTagName('UL')[0] || false;
-            if(ul) {
-                var aLi = ul.getElementsByTagName('LI');
-                var total = aLi.length;
-                var i=0;
-                var j=0;
-                var selectedPosition = false;
-                var nextSelected = 0;
-                while(i < total) {
-                    if(aLi[i].childNodes[0].className == this._options.classNameSelected) {
-                        selectedPosition = i;
-                        aLi[i].childNodes[0].className = '';
-                        break;
-                    }
-                    i++;
-                }
-                if(selectedPosition == (total - 1)) {
-                    nextSelected = 0;
-                } else {
-                    nextSelected = (selectedPosition + 1);
-                }
-
-                while(j < total) {
-                    if(j == nextSelected) {
-                        aLi[j].childNodes[0].className = this._options.classNameSelected;
-                    }
-                    j++;
-                }
-            }
-        }
-    },
-
-    _goSuggesterUp: function() {
-        if(this._isSuggestActive()) {
-            var ul = this._target.getElementsByTagName('UL')[0] || false;
-            if(ul) {
-                var aLi = ul.getElementsByTagName('LI');
-                var total = aLi.length;
-                var i=0;
-                var j=0;
-                var selectedPosition = false;
-                var nextSelected = 0;
-                while(i < total) {
-                    if(aLi[i].childNodes[0].className == this._options.classNameSelected) {
-                        selectedPosition = i;
-                        aLi[i].childNodes[0].className = '';
-                        break;
-                    }
-                    i++;
-                }
-                if(selectedPosition === 0) {
-                    nextSelected = (total - 1);
-                } else {
-                    nextSelected = (selectedPosition - 1);
-                }
-
-                while(j < total) {
-                    if(j === nextSelected) {
-                        aLi[j].childNodes[0].className = this._options.classNameSelected;
-                    }
-                    j++;
-                }
-            }
-        }
     }
 };
 
