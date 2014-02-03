@@ -1,6 +1,6 @@
-Ink.createModule('Ink.UI.AutoComplete', '1', ['Ink.UI.Common_1', 'Ink.Dom.Element_1', 'Ink.Dom.Css_1', 'Ink.Dom.Event_1', 'Ink.Util.Url_1', 'Ink.Net.Ajax_1'], function (Common, InkElement, Css, InkEvent, Url, Ajax) {
+Ink.createModule('Ink.UI.AutoComplete', '1', ['Ink.UI.Common_1', 'Ink.Util.Array_1', 'Ink.Dom.Element_1', 'Ink.Dom.Css_1', 'Ink.Dom.Event_1', 'Ink.Util.Url_1', 'Ink.Net.Ajax_1'], function (Common, InkArray, InkElement, Css, InkEvent, Url, Ajax) {
 'use strict';
-
+/* jshint maxcomplexity: 4 */
 /**
  * @module Ink.UI.AutoComplete_1
  */
@@ -25,17 +25,20 @@ AutoComplete.prototype = {
      * @param {String|DOMElement} [options.target] (Advanced) element where suggestions appear.
      */
     _init: function(elem, options) {
+        this._element = Common.elOrSelector(elem);
+
         this._options = Common.options({
             suggestionsURI: ['String', null],
             getSuggestionsURI: ['Function', null],
-            suggestionsURIParam: ['String', null],
+            suggestionsURIParam: ['String', 'input'],
             transformResponse: ['Function', null],
             onAjaxError: ['Function', null],
             suggestions: ['Object', null],
+            onSelect: ['Function', null],
             resultLimit: ['Integer', 10],
             minText: ['Integer', 3],
             target: ['String', null]
-        }, options || {}, elem);
+        }, options || {}, this._element);
 
         if (!(this._options.suggestionsURI || this._options.suggestions || this._options.getSuggestionsURI)) {
             Ink.error('Ink.UI.AutoComplete: You must specify the endpoint or array for autocomplete suggestions!');
@@ -43,10 +46,8 @@ AutoComplete.prototype = {
             return;
         }
 
-        this._element = Common.elOrSelector(elem);
-
         if (!this._options.target) {
-            this._target = this._makeTarget();
+            this._target = InkElement.create('div');
             InkElement.insertAfter(this._target, this._element);
         } else {
             this._target = Common.elOrSelector(this._options.target);
@@ -55,33 +56,23 @@ AutoComplete.prototype = {
         Css.addClassName(this._target, 'ink-dropdown autocomplete hide-all');
 
         this._addEvents();
-    },
 
-    _makeTarget: function () {
-        return InkElement.create('div');
+        this._getSuggestionsThroughAjax = InkEvent.throttle(this._getSuggestionsThroughAjax, 200);
     },
 
     _addEvents: function() {
         this._handlers = {
             keyup: InkEvent.observe(this._element, 'keyup', Ink.bindEvent(this._onKeyUp, this)),
-            focus: InkEvent.observe(this._element, 'focus', Ink.bindEvent(this._onFocusInput, this)),
             windowclick: InkEvent.observe(window, 'click', Ink.bindEvent(this._onClickWindow, this)),
             suggestionclick: InkEvent.observeDelegated(this._target, 'click', 'a', Ink.bindEvent(this._onSuggestionClick, this))
         };
     },
 
     _onKeyUp: function(e) {
-        var keycode = e.keyCode;
+        var value = this._getInputValue();
 
-        if(
-                keycode !== InkEvent.KEY_DOWN &&
-                keycode !== InkEvent.KEY_UP &&
-                keycode !== InkEvent.KEY_ESC &&
-                keycode !== InkEvent.KEY_TAB &&
-                keycode !== InkEvent.KEY_LEFT &&
-                keycode !== InkEvent.KEY_RIGHT
-                ) {
-            var value = this._getInputValue();
+        if(value !== this._oldValue) {
+            this._oldValue = value;
 
             if (value.length >= this._options.minText) {
                 // get suggestions based on name
@@ -96,25 +87,15 @@ AutoComplete.prototype = {
         return;
     },
 
-    _onFocusInput: function() {
-        // for now... do nothing
-        return;
-    },
-
-
     _getInputValue: function() {
         return this._element.value.trim();
-    },
-
-    isOpen: function() {
-        return !!this.open;
     },
 
     _getSuggestions: function() {
         var input = this._getInputValue();
 
         if(this._options.suggestions){
-            this._searchSuggestions(input);
+            this._searchSuggestions(input, this._options.suggestions);
         } else {
             this._getSuggestionsThroughAjax(input);
         }
@@ -127,6 +108,7 @@ AutoComplete.prototype = {
         } else if (this._options.suggestionsURIParam) {
             var url = Url.parseUrl(suggestionsUri);
             url[this._options.suggestionsURIParam] = input;
+            console.log(url)
             suggestionsUri = Url.format(url);
         }
         return suggestionsUri;
@@ -146,40 +128,29 @@ AutoComplete.prototype = {
         });
     },
 
-    _searchSuggestions: function(input) {
+    _searchSuggestions: function(input, suggestions) {
         if (!input) {
             this.close();
             return;
         }
 
-        var re = new RegExp("^"+input+"", "i");
-        var curSuggest;
-        var obj = this._options.suggestions;
-        var result = [];
+        var sanitized = input.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+        var re = new RegExp("^" + sanitized + "", "i");
 
-        var totalSuggestions = obj.length;
-        for(var i=0; i < totalSuggestions; i++) {
-            curSuggest = obj[i];
+        suggestions = InkArray.filter(suggestions, function (suggestion) {
+            return suggestion.match(re);
+        });
 
-            if(curSuggest.match(re)) {
-                result.push(curSuggest);
-            }
-        }
-
-        this._renderSuggestions(result);
+        this._renderSuggestions(suggestions);
     },
 
     _digestAjaxResponse: function(response) {
-        if (response == null) {
-            return { error: new Error('Ink.UI.AutoComplete: Network error.') };
-        }
         if (this._options.transformResponse) {
             return this._options.transformResponse(response, this);
-        } else if (typeof response.responseJSON.suggestions !== 'object') {
+        } else if (typeof response.responseJSON.suggestions === 'object') {
             return response.responseJSON;
         } else {
             var res = { suggestions: response.responseJSON, error: false };
-            if (res.suggestions.suggestions) { res = res.suggestions; }
             return res;
         }
     },
@@ -213,6 +184,7 @@ AutoComplete.prototype = {
         var targetValue = InkElement.data(suggestion).value;
 
         if (targetValue !== undefined) {
+            if (this._options.onSelect) { this._options.onSelect(targetValue, this); }
             this.setValue(targetValue);
             this.close();
             InkEvent.stopDefault(event);
@@ -239,27 +211,33 @@ AutoComplete.prototype = {
 
             InkElement.create('a', {
                 href: '#',
-                title: aSuggestions[i],
                 'data-value': aSuggestions[i],
                 setTextContent: aSuggestions[i],
                 insertBottom: li
             });
         }
 
-        this._openSuggestions();
+        this._open();
 
         //this._target.innerHTML = str;
         this._target.appendChild(ul);
     },
 
-    close: function() {
-        Css.addClassName(this._target, 'hide-all');
-        this.open = false;
+    isOpen: function() {
+        return !Css.hasClassName(this._target, 'hide-all');
     },
 
-    _openSuggestions: function() {
+    /**
+     * Hide the suggestion box.
+     *
+     * @method close
+     **/
+    close: function() {
+        Css.addClassName(this._target, 'hide-all');
+    },
+
+    _open: function() {
         Css.removeClassName(this._target, 'hide-all');
-        this.open = true;
     },
 
     _onClickWindow: function() {

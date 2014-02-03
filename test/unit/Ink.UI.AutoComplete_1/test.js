@@ -72,13 +72,13 @@ Ink.requireModules(['Ink.UI.AutoComplete_1', 'Ink.Dom.Element_1', 'Ink.Dom.Css_1
     });
 
     typeSomethingAndTest('type a few characters, suggestions field pops up', function (component, __, input, target) {
-        ok(component._openSuggestions.called, '_openSuggestions called when enough characters typed');
+        ok(component._open.called, '_open called when enough characters typed');
         ok(!Css.hasClassName(target, 'hide-all'), 'hide-all class removed');
         ok(target.getElementsByTagName('li').length, 'target has new <li> elements');
         start();
     }, { before: function (comp, _, __, target) {
         ok(Css.hasClassName(target, 'hide-all'));
-        sinon.spy(comp, '_openSuggestions');
+        sinon.spy(comp, '_open');
     }});
 
     typeSomethingAndTest('type a few characters, click a suggestion, input element changes value', function (_, __, input, target) {
@@ -89,6 +89,18 @@ Ink.requireModules(['Ink.UI.AutoComplete_1', 'Ink.Dom.Element_1', 'Ink.Dom.Css_1
             start();
         });
     });
+
+    (function () {
+        var spy = sinon.spy();
+        typeSomethingAndTest('When clicking a suggestion, options.onSelect is called', function (instance, __, input, target) {
+            var a = Selector.select('a[data-value="audi"]', target);
+            Syn.click(a[0], function () {
+                ok(spy.called, 'onSelect called');
+                ok(spy.calledWith('audi', instance), 'onSelect called with suggestion and instance');
+                start();
+            });
+        }, {onSelect: spy});
+    }());
 
     test('AutoComplete calls user functions for creating the request URI', function () {
         var container = makeContainer();
