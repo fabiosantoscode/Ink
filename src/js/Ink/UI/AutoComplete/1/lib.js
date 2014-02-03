@@ -35,8 +35,10 @@ AutoComplete.prototype = {
         }
 
         this._element = Common.elOrSelector(elem);
+
         if (!this._options.target) {
             this._target = this._makeTarget();
+            InkElement.insertAfter(this._target, this._element);
         } else {
             this._target = Common.elOrSelector(this._options.target);
         }
@@ -44,9 +46,6 @@ AutoComplete.prototype = {
         Css.addClassName(this._target, 'ink-dropdown autocomplete hide-all');
 
         this._addEvents();
-    },
-
-    _setElmVars: function() {
     },
 
     _makeTarget: function () {
@@ -57,7 +56,8 @@ AutoComplete.prototype = {
         this._handlers = {
             keyup: InkEvent.observe(this._element, 'keyup', Ink.bindEvent(this._onTypeInput, this)),
             focus: InkEvent.observe(this._element, 'focus', Ink.bindEvent(this._onFocusInput, this)),
-            windowclick: InkEvent.observe(window, 'click', Ink.bindEvent(this._onClickWindow, this))
+            windowclick: InkEvent.observe(window, 'click', Ink.bindEvent(this._onClickWindow, this)),
+            suggestionclick: InkEvent.observeDelegated(this._target, 'click', 'a', Ink.bindEvent(this._onSuggestionClick, this))
         };
     },
 
@@ -77,10 +77,10 @@ AutoComplete.prototype = {
             if (value.length >= this._options.minLength) {
                 // get suggestions based on name
                 this._clearResults();
-                this._submitData(value);
+                this._getSuggestions(value);
             } else {
-                if (this._isSuggestActive()) {
-                    this._closeSuggester();
+                if (this.isOpen()) {
+                    this._closeSuggestions();
                 }
             }
             InkEvent.stop(e);
@@ -99,12 +99,11 @@ AutoComplete.prototype = {
         return this._element.value.trim();
     },
 
-    _isSuggestActive: function() {
-        return !!this.suggestActive;
+    isOpen: function() {
+        return !!this.open;
     },
 
-    // TODO function name change
-    _submitData: function() {
+    _getSuggestions: function() {
         var input = this._getInputValue();
 
         if(this._options.suggestions){
@@ -138,7 +137,7 @@ AutoComplete.prototype = {
 
     _searchSuggestions: function(input) {
         if (!input) {
-            this._closeSuggester();
+            this._closeSuggestions();
             return;
         }
 
@@ -158,9 +157,9 @@ AutoComplete.prototype = {
         }
 
         if(result.length>0) {
-            this._writeResult(result);
+            this._renderSuggestions(result);
         } else {
-            this._closeSuggester();
+            this._closeSuggestions();
         }
     },
 
@@ -172,10 +171,11 @@ AutoComplete.prototype = {
                 res = this._options.transformResponse(obj, this);
             } else {
                 res = { suggestions: obj.responseJSON, error: false };
+                if (res.suggestions.suggestions) { res = res.suggestions; }
             }
 
             if(!res.error) {
-                this._writeResult(res.suggestions);
+                this._renderSuggestions(res.suggestions);
             }
         }
     },
@@ -187,96 +187,66 @@ AutoComplete.prototype = {
     _clearResults: function() {
         var aUl = this._target.getElementsByTagName('ul');
         if(aUl.length > 0) {
-            aUl[0].parentNode.removeChild(aUl);
+            aUl[0].parentNode.removeChild(aUl[0]);
         }
     },
 
-    _writeResult: function(aSuggestions) {
+    _onSuggestionClick: function(event) {
+        var suggestion = InkEvent.element(event);
+        var targetValue = InkElement.data(suggestion).value;
+
+        if (targetValue !== undefined) {
+            this.setValue(targetValue);
+            this._closeSuggestions();
+            InkEvent.stopDefault(event);
+        }
+    },
+
+    _renderSuggestions: function(aSuggestions) {
         this._clearResults();
-        var i = 0;
-        var limit = this._options.resultLimit;
-        var total = aSuggestions.length;
+
+        if (!aSuggestions.length) { return; }
 
         //var str = '';
-        var ul = document.createElement('ul');
-        Css.addClassName(ul, 'dropdown-menu');
+        var ul = InkElement.create('ul', {
+            className: 'dropdown-menu'
+        });
 
-        var li = false;
-        var a = false;
+        var li;
 
-        if(total > 0) {
-            while(i < total) {
-                li = document.createElement('li');
+        var len = Math.min(aSuggestions.length, this._options.resultLimit);
+        for (var i = 0; i < len; i++) {
+            li = InkElement.create('li', {
+                insertBottom: ul
+            });
 
-                a = document.createElement('a');
-                a.href = '#'+aSuggestions[i];
-                a.title = aSuggestions[i];
-
-                a.onclick = Ink.bind(function(value) {
-                    this.setValue(value);
-                    this._closeSuggester();
-                    return false;
-                }, this, aSuggestions[i]);
-
-                a.innerHTML = aSuggestions[i];
-                if(i === 0) {
-                    a.className = this._options.classNameSelected;
-                }
-
-                li.appendChild(a);
-                ul.appendChild(li);
-
-                /*
-                str += '<input name="checkbox2" type="radio" class="formRegistocheckbox" value="checkbox" />';
-                str += '<label>'+aEmails[i]+'</label><br clear="all"/>';
-                i++;
-                */
-                i++;
-                if(i === limit) {
-                    break;
-                }
-            }
-
-            this._openSuggester();
+            InkElement.create('a', {
+                title: aSuggestions[i],
+                'data-value': aSuggestions[i],
+                setTextContent: aSuggestions[i],
+                insertBottom: li
+            });
         }
+
+        this._openSuggestions();
 
         //this._target.innerHTML = str;
         this._target.appendChild(ul);
     },
 
-    _closeSuggester: function() {
+    _closeSuggestions: function() {
         Css.addClassName(this._target, 'hide-all');
-        this.suggestActive = false;
+        this.open = false;
     },
 
-    _openSuggester: function() {
+    _openSuggestions: function() {
         Css.removeClassName(this._target, 'hide-all');
-        this.suggestActive = true;
-    },
-
-    _onSuggesterEnter: function() {
-        if(this._isSuggestActive()) {
-            var ul = this._target.getElementsByTagName('UL')[0] || false;
-            if(ul) {
-                var aLi = ul.getElementsByTagName('LI');
-                var total = aLi.length;
-                var i=0;
-                while(i < total) {
-                    if(aLi[i].childNodes[0].className == this._options.classNameSelected) {
-                        aLi[i].childNodes[0].className = '';
-                        var value = aLi[i].childNodes[0].innerHTML;
-                        this.setValue(value);
-                        break;
-                    }
-                    i++;
-                }
-            }
-        }
+        this.open = true;
     },
 
     _onClickWindow: function() {
-        if(this._isSuggestActive()) {
-            this._closeSuggester();
+        if(this.isOpen()) {
+            this._closeSuggestions();
         }
     },
 

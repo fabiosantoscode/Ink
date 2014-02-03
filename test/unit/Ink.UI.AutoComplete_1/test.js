@@ -1,4 +1,4 @@
-Ink.requireModules(['Ink.UI.AutoComplete_1', 'Ink.Dom.Element_1', 'Ink.Dom.Css_1'], function (AutoComplete, InkElement, Css) {
+Ink.requireModules(['Ink.UI.AutoComplete_1', 'Ink.Dom.Element_1', 'Ink.Dom.Css_1', 'Ink.Dom.Selector_1'], function (AutoComplete, InkElement, Css, Selector) {
     function makeContainer() {
         return InkElement.create('div', {
             className: 'ink-autocomplete',
@@ -45,6 +45,7 @@ Ink.requireModules(['Ink.UI.AutoComplete_1', 'Ink.Dom.Element_1', 'Ink.Dom.Css_1
     });
 
     function typeSomethingAndTest(name, cb, options) {
+        options = options || {};
         testAutoComplete(name, function (component, container, input, target) {
             var args = [].slice.call(arguments);
             if (options.before) options.before.apply(null, args);
@@ -67,16 +68,25 @@ Ink.requireModules(['Ink.UI.AutoComplete_1', 'Ink.Dom.Element_1', 'Ink.Dom.Css_1
             sinon.spy(Ink.Net.Ajax_1.prototype, 'init');
         },
         suggestions: null,
-        suggestionsURI: 'autocomplete-suggestions.json'
+        suggestionsURI: './autocomplete-suggestions.json'
     });
 
     typeSomethingAndTest('type a few characters, suggestions field pops up', function (component, __, input, target) {
-        ok(component._openSuggester.called, '_openSuggester called when enough characters typed');
+        ok(component._openSuggestions.called, '_openSuggestions called when enough characters typed');
         ok(!Css.hasClassName(target, 'hide-all'), 'hide-all class removed');
         ok(target.getElementsByTagName('li').length, 'target has new <li> elements');
         start();
     }, { before: function (comp, _, __, target) {
         ok(Css.hasClassName(target, 'hide-all'));
-        sinon.spy(comp, '_openSuggester');
+        sinon.spy(comp, '_openSuggestions');
     }});
+
+    typeSomethingAndTest('type a few characters, click a suggestion, input element changes value', function (_, __, input, target) {
+        var a = Selector.select('a[data-value="audi"]', target);
+        ok(a.length);
+        Syn.click(a[0], function () {
+            equal(input.value, 'audi');
+            start();
+        });
+    });
 });
