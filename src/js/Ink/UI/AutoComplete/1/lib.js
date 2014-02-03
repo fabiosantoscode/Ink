@@ -14,20 +14,28 @@ AutoComplete.prototype = {
      * @constructor
      *
      * @param {String|DOMElement} elem String or DOMElement for the input field
+     * @param {String}   [options.suggestionsURI] URI of the endpoint to query for suggestions
+     * @param {Function} [options.getSuggestionsURI] Function taking `(input value, autocomplete instance)` and returning the URL with suggestions.
+     * @param {String}   [options.suggestionsURIParam='input'] Choose the URL parameter where we put the user input when getting suggestions. If you choose "asd", the url will be `"suggestionsURI?asd=user-input"`.
+     * @param {Function} [options.transformResponse] You can provide a function to digest a response from your endpoint into a format that AutoComplete understands. Takes `(Ink.Net.Ajax response)`, returns `{ suggestions: [], error: Error || null }`
+     * @param {Function} [options.onAjaxError] A callback for when there are AJAX errors
+     * @param {Array}    [options.suggestions] A list of suggestions, for when you have them around.
+     * @param {Integer}  [options.resultLimit=10] How many suggestions to show on the dropdown.
+     * @param {Integer}  [options.minText=3] How many characters the user needs to type before we list suggestions.
+     * @param {String|DOMElement} [options.target] (Advanced) element where suggestions appear.
      */
     _init: function(elem, options) {
-        this._options = Ink.extendObj({
-            target: null,
-            onAjaxError: null,
-            suggestionsURI: null,
-            getSuggestionsURI: null,
-            transformResponse: null,
-            suggestionsURIParam: null,
-            classNameSelected: 'selected',
-            suggestions: null,
-            resultLimit: 10,
-            minText: 3
-        }, options || {});
+        this._options = Common.options({
+            suggestionsURI: ['String', null],
+            getSuggestionsURI: ['Function', null],
+            suggestionsURIParam: ['String', null],
+            transformResponse: ['Function', null],
+            onAjaxError: ['Function', null],
+            suggestions: ['Object', null],
+            resultLimit: ['Integer', 10],
+            minText: ['Integer', 3],
+            target: ['String', null]
+        }, options || {}, elem);
 
         if (!(this._options.suggestionsURI || this._options.suggestions || this._options.getSuggestionsURI)) {
             Ink.error('Ink.UI.AutoComplete: You must specify the endpoint or array for autocomplete suggestions!');
@@ -55,14 +63,14 @@ AutoComplete.prototype = {
 
     _addEvents: function() {
         this._handlers = {
-            keyup: InkEvent.observe(this._element, 'keyup', Ink.bindEvent(this._onTypeInput, this)),
+            keyup: InkEvent.observe(this._element, 'keyup', Ink.bindEvent(this._onKeyUp, this)),
             focus: InkEvent.observe(this._element, 'focus', Ink.bindEvent(this._onFocusInput, this)),
             windowclick: InkEvent.observe(window, 'click', Ink.bindEvent(this._onClickWindow, this)),
             suggestionclick: InkEvent.observeDelegated(this._target, 'click', 'a', Ink.bindEvent(this._onSuggestionClick, this))
         };
     },
 
-    _onTypeInput: function(e) {
+    _onKeyUp: function(e) {
         var keycode = e.keyCode;
 
         if(
