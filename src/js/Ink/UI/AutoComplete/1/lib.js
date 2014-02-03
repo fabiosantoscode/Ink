@@ -62,6 +62,8 @@ AutoComplete.prototype = {
 
     _addEvents: function() {
         this._handlers = {
+            keydown: InkEvent.observe(this._element, 'keydown', Ink.bindEvent(this._onKeyDown, this)),
+            valueskeydown: InkEvent.observeDelegated(this._target, 'keydown', '[data-value]', Ink.bindEvent(this._onKeyDown, this)),
             keyup: InkEvent.observe(this._element, 'keyup', Ink.bindEvent(this._onKeyUp, this)),
             windowclick: InkEvent.observe(window, 'click', Ink.bindEvent(this._onClickWindow, this)),
             suggestionclick: InkEvent.observeDelegated(this._target, 'click', 'a', Ink.bindEvent(this._onSuggestionClick, this))
@@ -81,10 +83,62 @@ AutoComplete.prototype = {
             } else {
                 this.close();
             }
-            InkEvent.stop(e);
         }
 
         return;
+    },
+
+    _onKeyDown: function (event) {
+
+        console.log('keydown', InkEvent.element(event));
+        if (!this.isOpen()) { return; }
+
+        var keyCode = event.keyCode || event.which;
+        if (keyCode === InkEvent.KEY_DOWN || keyCode === InkEvent.KEY_UP) {
+            if (InkEvent.element(event) === this._element && keyCode === InkEvent.KEY_DOWN) {
+                this._focusFirst();
+            } else {
+                this._focusRelative(InkEvent.element(event), keyCode === InkEvent.KEY_DOWN ? 'down' : 'up');
+            }
+        }
+    },
+
+    _focusFirst: function () {
+        var focus = Ink.s('a', this._target);
+        focus && focus.focus();
+    },
+
+    _focusRelative: function (element, downUp) {
+        var li = InkElement.findUpwardsBySelector(element, 'li');
+
+        if (downUp === 'down') {
+            do {
+                li = li.nextSibling;
+            } while (li && !Ink.s('[data-value]', li))
+
+            if (!li) {
+                return;
+            }
+        } else {
+            do {
+                li = li.previousSibling;
+            } while (li && !Ink.s('[data-value]', li))
+
+            if (!li) {
+                this._element.focus();
+                return;
+            }
+        }
+
+        var focusTarget = Ink.s('[data-value]', li);
+
+        if (focusTarget) { focusTarget.focus(); }
+    },
+
+    _getFocusedValue: function () {
+        if (InkElement.isAncestorOf(this._target, document.activeElement)) {
+            return document.activeElement;
+        }
     },
 
     _getInputValue: function() {

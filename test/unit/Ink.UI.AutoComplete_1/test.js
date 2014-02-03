@@ -3,7 +3,6 @@ Ink.requireModules(['Ink.UI.AutoComplete_1', 'Ink.Dom.Element_1', 'Ink.Dom.Css_1
         return InkElement.create('div', {
             className: 'ink-autocomplete',
             setHTML: Ink.i('test_html').innerHTML,
-            style: 'display: none',
             insertBottom: document.body
         });
     }
@@ -15,7 +14,7 @@ Ink.requireModules(['Ink.UI.AutoComplete_1', 'Ink.Dom.Element_1', 'Ink.Dom.Css_1
             var target = Ink.s('.target', container);
             var tabComponent = new AutoComplete(input, Ink.extendObj({
                 target: target,
-                suggestions: ['audi', 'mitsubishi', 'umm']
+                suggestions: ['audi', 'aud2', 'mitsubishi', 'umm']
             }, options || {}));
             testBack(
                 tabComponent,
@@ -111,5 +110,65 @@ Ink.requireModules(['Ink.UI.AutoComplete_1', 'Ink.Dom.Element_1', 'Ink.Dom.Css_1
         autocomplete._getSuggestions();
         ok(spy.called, 'getSuggestionsURI called');
         ok(spy.calledWith('the value', autocomplete), 'getSuggestionsURI called with the value and the autocomplete instance');
+    });
+
+    module('keyboard navigation');
+
+    testAutoComplete('_focusRelative', function (autocomp, __, input, target) {
+        autocomp._searchSuggestions('a', ['aa', 'ab', 'ac', 'ad']);
+        var aa = Selector.select('a[data-value="aa"]', target)[0]
+        var ab = Selector.select('a[data-value="ab"]', target)[0]
+        autocomp._focusRelative(ab, 'up')
+        strictEqual(document.activeElement, aa);
+        autocomp._focusRelative(aa, 'down');
+        strictEqual(document.activeElement, ab);
+    });
+
+    testAutoComplete('_focusRelative past first and last', function (autocomp, __, input, target) {
+        autocomp._searchSuggestions('a', ['aa', 'ab', 'ac', 'ad']);
+        var aa = Selector.select('a[data-value="aa"]', target)[0]
+        var ad = Selector.select('a[data-value="ad"]', target)[0]
+
+        aa.focus();
+        autocomp._focusRelative(aa, 'up');
+        strictEqual(document.activeElement, input, 'going up from first goes back to the <input>');
+
+        ad.focus();
+        autocomp._focusRelative(ad, 'down');
+        strictEqual(document.activeElement, ad, 'going down from the last stays in the last');
+    });
+
+    testAutoComplete('press [down] to focus the first <a>', function (_, __, input, target) {
+        stop();
+        Syn.type('aud[down]', input, function () {
+            var firstOne = Selector.select('a', target)[0];
+            equal(firstOne, document.activeElement, 'When [down] was pressed, the first suggestion was focused');
+            start();
+        });
+    });
+
+    testAutoComplete('navigate up and down', function (_, __, input, target) {
+        stop();
+        Syn.type('aud[down]', input, function () {
+            equal(Ink.ss('a', target).length, 2, 'sanity check.');
+            var firstOne = Selector.select('a', target)[0];
+            var secondOne = Selector.select('a', target)[1];
+            Syn.type('[down]', firstOne, function () {
+                strictEqual(secondOne, document.activeElement, 'pressed down from the first one to select the second one');
+                Syn.type('[down]', secondOne, function () {
+                    equal(secondOne, document.activeElement, 'pressing down more times doesn\'t work because it\'s the last element');
+                    Syn.type('[up]', secondOne, function () {
+                        equal(firstOne, document.activeElement, 'pressing up goes to the second element');
+                        Syn.type('[up]', firstOne, function () {
+                            equal(input, document.activeElement, 'pressing up goes back to the input');
+                            Syn.type('[up]', input, function () {
+                                equal(input, document.activeElement, '(sanity check - can\'t go above the input)');
+                                start();
+                            });
+                        });
+                    });
+                });
+            });
+        });
     });
 });
