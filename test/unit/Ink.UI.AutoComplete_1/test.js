@@ -89,4 +89,15 @@ Ink.requireModules(['Ink.UI.AutoComplete_1', 'Ink.Dom.Element_1', 'Ink.Dom.Css_1
             start();
         });
     });
+
+    test('AutoComplete calls user functions for creating the request URI', function () {
+        var container = makeContainer();
+        container.getElementsByTagName('input')[0].value = 'the value';
+        var uri;
+        var spy = sinon.spy(sinon.stub().returns('http://example.com/'));
+        var autocomplete = new AutoComplete(Ink.s('input', container), { getSuggestionsURI: spy });
+        autocomplete._getSuggestions();
+        ok(spy.called, 'getSuggestionsURI called');
+        ok(spy.calledWith('the value', autocomplete), 'getSuggestionsURI called with the value and the autocomplete instance');
+    });
 });

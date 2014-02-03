@@ -1,5 +1,4 @@
 Ink.createModule('Ink.UI.AutoComplete', '1', ['Ink.UI.Common_1', 'Ink.Dom.Element_1', 'Ink.Dom.Css_1', 'Ink.Dom.Event_1', 'Ink.Util.Url_1', 'Ink.Net.Ajax_1'], function (Common, InkElement, Css, InkEvent, Url, Ajax) {
-/*jshint maxcomplexity: 4*/
 'use strict';
 
 /**
@@ -19,13 +18,15 @@ AutoComplete.prototype = {
     _init: function(elem, options) {
         this._options = Ink.extendObj({
             target: null,
+            onAjaxError: null,
             suggestionsURI: null,
-            getSuggestionsUri: null,
+            getSuggestionsURI: null,
             transformResponse: null,
+            suggestionsURIParam: null,
             classNameSelected: 'selected',
             suggestions: null,
             resultLimit: 10,
-            minLength: 1
+            minText: 3
         }, options || {});
 
         if (!(this._options.suggestionsURI || this._options.suggestions || this._options.getSuggestionsURI)) {
@@ -74,14 +75,12 @@ AutoComplete.prototype = {
                 ) {
             var value = this._getInputValue();
 
-            if (value.length >= this._options.minLength) {
+            if (value.length >= this._options.minText) {
                 // get suggestions based on name
-                this._clearResults();
+                this._clear();
                 this._getSuggestions(value);
             } else {
-                if (this.isOpen()) {
-                    this._closeSuggestions();
-                }
+                this.close();
             }
             InkEvent.stop(e);
         }
@@ -113,22 +112,26 @@ AutoComplete.prototype = {
         }
     },
 
+    _getSuggestionsURI: function (input) {
+        var suggestionsUri = this._options.suggestionsURI;
+        if (this._options.getSuggestionsURI) {
+            suggestionsUri = this._options.getSuggestionsURI(input, this);
+        } else if (this._options.suggestionsURIParam) {
+            var url = Url.parseUrl(suggestionsUri);
+            url[this._options.suggestionsURIParam] = input;
+            suggestionsUri = Url.format(url);
+        }
+        return suggestionsUri;
+    },
 
     _getSuggestionsThroughAjax: function (input) {
-        var suggestionsUri = this._options.suggestionsUri;
-        if (this._options.getSuggestionsURI) {
-            suggestionsUri = this._options.getSuggestionsUri(input, this);
-        } else {
-            var url = Url.parseUrl(suggestionsUri);
-            suggestionsUri = Url.format(Ink.extendObj({ name: input}, url));
-        }
-        if(this.ajaxRequest) {
+        if (this.ajaxRequest) {
             // close connection
             try { this.ajaxRequest.transport.abort(); } catch (e) {}
             this.ajaxRequest = null;
         }
 
-        this.ajaxRequest = new Ajax(this._options.suggestionsURI, {
+        this.ajaxRequest = new Ajax(this._getSuggestionsURI(input), {
             method: 'get',
             onSuccess: Ink.bindMethod(this, '_onAjaxSuccess'),
             onFailure: Ink.bindMethod(this, '_onAjaxFailure')
@@ -137,7 +140,7 @@ AutoComplete.prototype = {
 
     _searchSuggestions: function(input) {
         if (!input) {
-            this._closeSuggestions();
+            this.close();
             return;
         }
 
@@ -150,41 +153,47 @@ AutoComplete.prototype = {
         for(var i=0; i < totalSuggestions; i++) {
             curSuggest = obj[i];
 
-            //if(re.test(curPath)) {
             if(curSuggest.match(re)) {
                 result.push(curSuggest);
             }
         }
 
-        if(result.length>0) {
-            this._renderSuggestions(result);
+        this._renderSuggestions(result);
+    },
+
+    _digestAjaxResponse: function(response) {
+        if (response == null) {
+            return { error: new Error('Ink.UI.AutoComplete: Network error.') };
+        }
+        if (this._options.transformResponse) {
+            return this._options.transformResponse(response, this);
+        } else if (typeof response.responseJSON.suggestions !== 'object') {
+            return response.responseJSON;
         } else {
-            this._closeSuggestions();
+            var res = { suggestions: response.responseJSON, error: false };
+            if (res.suggestions.suggestions) { res = res.suggestions; }
+            return res;
         }
     },
 
     _onAjaxSuccess: function(obj) {
-        if(obj != null) {
-            var res;
+        var res = this._digestAjaxResponse(obj);
 
-            if (this._options.transformResponse) {
-                res = this._options.transformResponse(obj, this);
-            } else {
-                res = { suggestions: obj.responseJSON, error: false };
-                if (res.suggestions.suggestions) { res = res.suggestions; }
-            }
-
-            if(!res.error) {
-                this._renderSuggestions(res.suggestions);
-            }
+        if (typeof res.error !== 'object') {
+            this._renderSuggestions(res.suggestions);
+        } else if (this._options.onAjaxError) {
+            this._options.onAjaxError(res.error);
         }
     },
 
     _onAjaxFailure: function(err) {
+        if (this._options.onAjaxError) {
+            this._options.onAjaxError(err);
+        }
         Ink.error('[Ink.UI.AutoComplete_1] Ajax failure: ', err);
     },
 
-    _clearResults: function() {
+    _clear: function() {
         var aUl = this._target.getElementsByTagName('ul');
         if(aUl.length > 0) {
             aUl[0].parentNode.removeChild(aUl[0]);
@@ -197,13 +206,13 @@ AutoComplete.prototype = {
 
         if (targetValue !== undefined) {
             this.setValue(targetValue);
-            this._closeSuggestions();
+            this.close();
             InkEvent.stopDefault(event);
         }
     },
 
     _renderSuggestions: function(aSuggestions) {
-        this._clearResults();
+        this._clear();
 
         if (!aSuggestions.length) { return; }
 
@@ -221,6 +230,7 @@ AutoComplete.prototype = {
             });
 
             InkElement.create('a', {
+                href: '#',
                 title: aSuggestions[i],
                 'data-value': aSuggestions[i],
                 setTextContent: aSuggestions[i],
@@ -234,7 +244,7 @@ AutoComplete.prototype = {
         this._target.appendChild(ul);
     },
 
-    _closeSuggestions: function() {
+    close: function() {
         Css.addClassName(this._target, 'hide-all');
         this.open = false;
     },
@@ -245,9 +255,7 @@ AutoComplete.prototype = {
     },
 
     _onClickWindow: function() {
-        if(this.isOpen()) {
-            this._closeSuggestions();
-        }
+        this.close();
     },
 
     setValue: function(value) {
