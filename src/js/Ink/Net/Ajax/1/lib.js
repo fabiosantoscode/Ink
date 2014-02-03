@@ -541,26 +541,16 @@ Ink.createModule('Ink.Net.Ajax', '1', [], function() {
          * @param {Function}  listener
          */
         safeCall: function(listener, first/*, second*/) {
-            function rethrow(exception){
-                setTimeout(function() {
-                    // Rethrow exception so it'll land in
-                    // the error console, firebug, whatever.
-                    if (exception.message) {
-                        exception.message += '\n'+(exception.stacktrace || exception.stack || '');
-                    }
-                    throw exception;
-                }, 1);
-            }
             if (typeof this.options[listener] === 'function') {
                 //SAPO.safeCall(this, this.options[listener], first, second);
                 //return object[listener].apply(object, [].slice.call(arguments, 2));
                 try {
                     this.options[listener].apply(this, [].slice.call(arguments, 1));
                 } catch(ex) {
-                    rethrow(ex);
+                    Ink.error(ex);
                 }
             } else if (first && window.Error && (first instanceof Error)) {
-                rethrow(first);
+                Ink.error(first);
             }
         },
 
@@ -653,7 +643,7 @@ Ink.createModule('Ink.Net.Ajax', '1', [], function() {
                     if (crossDomain) {
                         // Need explicit handling because Mozila aborts
                         // the script and Chrome fails silently.per the spec
-                        throw this.makeError(18, 'NETWORK_ERR');
+                        throw this.makeError(18, 'NETWORK_ERR: Set optons.cors to true if you intend to make a cross-domain request.');
                     } else {
                         this.startTime = new Date().getTime();
                         this.transport.send(params);
