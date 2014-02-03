@@ -142,7 +142,11 @@ AutoComplete.prototype = {
     },
 
     _getInputValue: function() {
-        return this._element.value.trim();
+        if (''.trim) {
+            return this._element.value.trim();
+        } else {
+            return this._element.value.replace(/^\s+/, '').replace(/\s+$/, '');
+        }
     },
 
     _getSuggestions: function() {
