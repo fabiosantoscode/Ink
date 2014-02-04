@@ -41,7 +41,7 @@ Ink.requireModules(['Ink.UI.AutoComplete_1', 'Ink.Dom.Element_1', 'Ink.Dom.Css_1
         ok(Css.hasClassName(target, 'ink-dropdown'), 'target gets ink-dropdown class');
         ok(Css.hasClassName(target, 'autocomplete'), 'target gets autocomplete class');
         ok(Css.hasClassName(target, 'hide-all'), 'target gets hide-all class');
-    });
+    }, { targetClassName: 'ink-dropdown autocomplete' });
 
     function typeSomethingAndTest(name, cb, options) {
         options = options || {};
@@ -146,6 +146,10 @@ Ink.requireModules(['Ink.UI.AutoComplete_1', 'Ink.Dom.Element_1', 'Ink.Dom.Css_1
             start();
         });
     });
+
+    testAutoComplete('options.suggestionsURIParam', function (comp) {
+        equal(comp._getSuggestionsURI('THE_TEXT'), '/?param=THE%20TEXT');
+    }, {suggestionsURIParam: 'param', suggestionsURI: '/' });
 
     testAutoComplete('navigate up and down', function (_, __, input, target) {
         stop();

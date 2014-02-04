@@ -40,6 +40,8 @@ AutoComplete.prototype = {
             getSuggestionsURI: ['Function', null],
             suggestionsURIParam: ['String', 'input'],
             transformResponse: ['Function', null],
+            targetClassName: ['String', 'autocomplete-target'],
+            suggestionUlClassName: ['String', 'autocomplete-suggestions'],
             onAjaxError: ['Function', null],
             suggestions: ['Object', null],
             onSelect: ['Function', null],
@@ -61,7 +63,8 @@ AutoComplete.prototype = {
             this._target = Common.elOrSelector(this._options.target);
         }
 
-        Css.addClassName(this._target, 'ink-dropdown autocomplete hide-all');
+        Css.addClassName(this._target, 'hide-all');
+        Css.addClassName(this._target, this._options.targetClassName);
 
         this._addEvents();
 
@@ -102,15 +105,13 @@ AutoComplete.prototype = {
         var keyCode = event.keyCode || event.which;
         if (keyCode === InkEvent.KEY_DOWN || keyCode === InkEvent.KEY_UP) {
             if (InkEvent.element(event) === this._element && keyCode === InkEvent.KEY_DOWN) {
-                this._focusFirst();
+                // Focus first
+                focus(Ink.s('a', this._target));
             } else {
                 this._focusRelative(InkEvent.element(event), keyCode === InkEvent.KEY_DOWN ? 'down' : 'up');
             }
+            InkEvent.stopDefault(event);
         }
-    },
-
-    _focusFirst: function () {
-        focus(Ink.s('a', this._target));
     },
 
     _focusRelative: function (element, downUp) {
@@ -255,7 +256,7 @@ AutoComplete.prototype = {
 
         //var str = '';
         var ul = InkElement.create('ul', {
-            className: 'dropdown-menu'
+            className: this._options.suggestionUlClassName
         });
 
         var li;
