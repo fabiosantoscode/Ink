@@ -103,6 +103,7 @@ AutoComplete.prototype = {
         if (!this.isOpen()) { return; }
 
         var keyCode = event.keyCode || event.which;
+        Ink.log('keydown', keyCode);
         if (keyCode === InkEvent.KEY_DOWN || keyCode === InkEvent.KEY_UP) {
             if (InkEvent.element(event) === this._element && keyCode === InkEvent.KEY_DOWN) {
                 // Focus first

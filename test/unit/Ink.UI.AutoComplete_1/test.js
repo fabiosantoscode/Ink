@@ -175,4 +175,16 @@ Ink.requireModules(['Ink.UI.AutoComplete_1', 'Ink.Dom.Element_1', 'Ink.Dom.Css_1
             });
         });
     });
+
+    testAutoComplete('press escape to leave', function (_, __, input, target) {
+        stop();
+        Syn.type('aud[down]', input, function () {
+            equal(Ink.ss('a', target).length, 2, 'sanity check.');
+            var firstOne = Selector.select('a', target)[0];
+            Syn.type('[escape]', firstOne, function () {
+                ok(Css.hasClassName(target, 'hide-all'), 'when [escape] typed, target gets .hide-all');
+                start();
+            });
+        });
+    });
 });
