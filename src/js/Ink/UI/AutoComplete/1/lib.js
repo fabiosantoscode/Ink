@@ -1,6 +1,14 @@
 Ink.createModule('Ink.UI.AutoComplete', '1', ['Ink.UI.Common_1', 'Ink.Util.Array_1', 'Ink.Dom.Element_1', 'Ink.Dom.Css_1', 'Ink.Dom.Event_1', 'Ink.Util.Url_1', 'Ink.Net.Ajax_1'], function (Common, InkArray, InkElement, Css, InkEvent, Url, Ajax) {
 'use strict';
-/* jshint maxcomplexity: 4 */
+
+function focus(elem) {
+    if (elem) {
+        try {
+            elem.focus();
+        } catch(e) { }
+    }
+}
+
 /**
  * @module Ink.UI.AutoComplete_1
  */
@@ -70,7 +78,7 @@ AutoComplete.prototype = {
         };
     },
 
-    _onKeyUp: function(e) {
+    _onKeyUp: function() {
         var value = this._getInputValue();
 
         if(value !== this._oldValue) {
@@ -89,8 +97,6 @@ AutoComplete.prototype = {
     },
 
     _onKeyDown: function (event) {
-
-        console.log('keydown', InkEvent.element(event));
         if (!this.isOpen()) { return; }
 
         var keyCode = event.keyCode || event.which;
@@ -104,35 +110,29 @@ AutoComplete.prototype = {
     },
 
     _focusFirst: function () {
-        var focus = Ink.s('a', this._target);
-        focus && focus.focus();
+        focus(Ink.s('a', this._target));
     },
 
     _focusRelative: function (element, downUp) {
         var li = InkElement.findUpwardsBySelector(element, 'li');
 
-        if (downUp === 'down') {
-            do {
-                li = li.nextSibling;
-            } while (li && !Ink.s('[data-value]', li))
+        var siblingName = downUp === 'down' ? 'nextSibling' : 'previousSibling';
 
-            if (!li) {
-                return;
-            }
-        } else {
-            do {
-                li = li.previousSibling;
-            } while (li && !Ink.s('[data-value]', li))
+        // Advance until we're at a <li> with an <a> with the [data-value] attr
+        do {
+            li = li[siblingName];
+        } while (li && !Ink.s('[data-value]', li));
 
-            if (!li) {
-                this._element.focus();
-                return;
+        // Trying to go up the first, or down the last.
+        if (!li) {
+            if (!li && downUp === 'up') {
+                // It's the top element. focus the input
+                focus(this._element);
             }
+            return;
         }
 
-        var focusTarget = Ink.s('[data-value]', li);
-
-        if (focusTarget) { focusTarget.focus(); }
+        focus(Ink.s('[data-value]', li));
     },
 
     _getFocusedValue: function () {
@@ -166,7 +166,6 @@ AutoComplete.prototype = {
         } else if (this._options.suggestionsURIParam) {
             var url = Url.parseUrl(suggestionsUri);
             url[this._options.suggestionsURIParam] = input;
-            console.log(url)
             suggestionsUri = Url.format(url);
         }
         return suggestionsUri;
