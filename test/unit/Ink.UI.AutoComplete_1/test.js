@@ -186,4 +186,25 @@ Ink.requireModules(['Ink.UI.AutoComplete_1', 'Ink.Dom.Element_1', 'Ink.Dom.Css_1
             });
         });
     });
+
+    testAutoComplete('press [tab] to select and move focus to next thing, if we\'re in a form', function (_, __, input, target) {
+        stop();
+        var form = InkElement.create('form');
+        InkElement.wrap(input, form);
+        var linkAfter = InkElement.create('input', {
+            insertAfter: input,
+            type: 'text'
+        });
+        Syn.type('aud[down]', input, function () {
+            equal(Ink.ss('a', target).length, 2, 'sanity check.');
+            var firstOne = Selector.select('a', target)[0];
+            strictEqual(firstOne, document.activeElement, 'sanity check 2');
+            Syn.type('[tab]', firstOne, function () {
+                strictEqual(linkAfter, document.activeElement, 'the next thing is focused');
+                equal(input.value, InkElement.textContent(firstOne));
+                ok(Css.hasClassName(target, 'hide-all'), 'target gets .hide-all');
+                start();
+            });
+        });
+    });
 });

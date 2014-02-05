@@ -102,18 +102,30 @@ AutoComplete.prototype = {
     _onKeyDown: function (event) {
         if (!this.isOpen()) { return; }
 
+        var target = InkEvent.element(event);
+
         var keyCode = event.keyCode || event.which;
         if (keyCode === InkEvent.KEY_DOWN || keyCode === InkEvent.KEY_UP) {
-            if (InkEvent.element(event) === this._element && keyCode === InkEvent.KEY_DOWN) {
+            if (target === this._element && keyCode === InkEvent.KEY_DOWN) {
                 // Focus first
                 focus(Ink.s('a', this._target));
             } else {
-                this._focusRelative(InkEvent.element(event), keyCode === InkEvent.KEY_DOWN ? 'down' : 'up');
+                this._focusRelative(target, keyCode === InkEvent.KEY_DOWN ? 'down' : 'up');
             }
             InkEvent.stopDefault(event);
         }
 
         if (keyCode === InkEvent.KEY_ESC) {
+            this.close();
+            focus(this._element);
+        }
+
+        if (keyCode === InkEvent.KEY_TAB && target !== this._element) {
+            var data = InkElement.data(target);
+            if (data.value) {
+                this._element.value = data.value;
+            }
+
             this.close();
             focus(this._element);
         }
