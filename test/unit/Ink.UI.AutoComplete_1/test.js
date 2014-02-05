@@ -112,13 +112,17 @@ Ink.requireModules(['Ink.UI.AutoComplete_1', 'Ink.Dom.Element_1', 'Ink.Dom.Css_1
         ok(spy.calledWith('the value', autocomplete), 'getSuggestionsURI called with the value and the autocomplete instance');
     });
 
+    testAutoComplete('options.suggestionsURIParam', function (comp) {
+        equal(comp._getSuggestionsURI('THE_TEXT'), '/?param=THE%20TEXT');
+    }, {suggestionsURIParam: 'param', suggestionsURI: '/' });
+
     module('keyboard navigation');
 
     testAutoComplete('_focusRelative', function (autocomp, __, input, target) {
         autocomp._searchSuggestions('a', ['aa', 'ab', 'ac', 'ad']);
-        var aa = Selector.select('a[data-value="aa"]', target)[0]
-        var ab = Selector.select('a[data-value="ab"]', target)[0]
-        autocomp._focusRelative(ab, 'up')
+        var aa = Selector.select('a[data-value="aa"]', target)[0];
+        var ab = Selector.select('a[data-value="ab"]', target)[0];
+        autocomp._focusRelative(ab, 'up');
         strictEqual(document.activeElement, aa);
         autocomp._focusRelative(aa, 'down');
         strictEqual(document.activeElement, ab);
@@ -126,8 +130,11 @@ Ink.requireModules(['Ink.UI.AutoComplete_1', 'Ink.Dom.Element_1', 'Ink.Dom.Css_1
 
     testAutoComplete('_focusRelative past first and last', function (autocomp, __, input, target) {
         autocomp._searchSuggestions('a', ['aa', 'ab', 'ac', 'ad']);
-        var aa = Selector.select('a[data-value="aa"]', target)[0]
-        var ad = Selector.select('a[data-value="ad"]', target)[0]
+        var aa = Selector.select('a[data-value="aa"]', target)[0];
+        var ad = Selector.select('a[data-value="ad"]', target)[0];
+
+
+        equal(Selector.select('a', target).length, 4, 'sanity check');
 
         aa.focus();
         autocomp._focusRelative(aa, 'up');
@@ -135,7 +142,7 @@ Ink.requireModules(['Ink.UI.AutoComplete_1', 'Ink.Dom.Element_1', 'Ink.Dom.Css_1
 
         ad.focus();
         autocomp._focusRelative(ad, 'down');
-        strictEqual(document.activeElement, ad, 'going down from the last stays in the last');
+        strictEqual(document.activeElement, input, 'going down from the last goes back to the <input>');
     });
 
     testAutoComplete('press [down] to focus the first <a>', function (_, __, input, target) {
@@ -147,10 +154,6 @@ Ink.requireModules(['Ink.UI.AutoComplete_1', 'Ink.Dom.Element_1', 'Ink.Dom.Css_1
         });
     });
 
-    testAutoComplete('options.suggestionsURIParam', function (comp) {
-        equal(comp._getSuggestionsURI('THE_TEXT'), '/?param=THE%20TEXT');
-    }, {suggestionsURIParam: 'param', suggestionsURI: '/' });
-
     testAutoComplete('navigate up and down', function (_, __, input, target) {
         stop();
         Syn.type('aud[down]', input, function () {
@@ -160,16 +163,10 @@ Ink.requireModules(['Ink.UI.AutoComplete_1', 'Ink.Dom.Element_1', 'Ink.Dom.Css_1
             Syn.type('[down]', firstOne, function () {
                 strictEqual(secondOne, document.activeElement, 'pressed down from the first one to select the second one');
                 Syn.type('[down]', secondOne, function () {
-                    equal(secondOne, document.activeElement, 'pressing down more times doesn\'t work because it\'s the last element');
-                    Syn.type('[up]', secondOne, function () {
-                        equal(firstOne, document.activeElement, 'pressing up goes to the second element');
-                        Syn.type('[up]', firstOne, function () {
-                            equal(input, document.activeElement, 'pressing up goes back to the input');
-                            Syn.type('[up]', input, function () {
-                                equal(input, document.activeElement, '(sanity check - can\'t go above the input)');
-                                start();
-                            });
-                        });
+                    equal(input, document.activeElement, 'pressing down again goes back to the input');
+                    Syn.type('[up]', input, function () {
+                        equal(input, document.activeElement, 'pressing up from the input stays in the input');
+                        start();
                     });
                 });
             });
@@ -183,6 +180,7 @@ Ink.requireModules(['Ink.UI.AutoComplete_1', 'Ink.Dom.Element_1', 'Ink.Dom.Css_1
             var firstOne = Selector.select('a', target)[0];
             Syn.type('[escape]', firstOne, function () {
                 ok(Css.hasClassName(target, 'hide-all'), 'when [escape] typed, target gets .hide-all');
+                strictEqual(input, document.activeElement, 'And the input gets focused');
                 start();
             });
         });

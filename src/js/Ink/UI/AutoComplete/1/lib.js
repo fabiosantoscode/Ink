@@ -103,7 +103,6 @@ AutoComplete.prototype = {
         if (!this.isOpen()) { return; }
 
         var keyCode = event.keyCode || event.which;
-        Ink.log('keydown', keyCode);
         if (keyCode === InkEvent.KEY_DOWN || keyCode === InkEvent.KEY_UP) {
             if (InkEvent.element(event) === this._element && keyCode === InkEvent.KEY_DOWN) {
                 // Focus first
@@ -112,6 +111,11 @@ AutoComplete.prototype = {
                 this._focusRelative(InkEvent.element(event), keyCode === InkEvent.KEY_DOWN ? 'down' : 'up');
             }
             InkEvent.stopDefault(event);
+        }
+
+        if (keyCode === InkEvent.KEY_ESC) {
+            this.close();
+            focus(this._element);
         }
     },
 
@@ -127,10 +131,7 @@ AutoComplete.prototype = {
 
         // Trying to go up the first, or down the last.
         if (!li) {
-            if (!li && downUp === 'up') {
-                // It's the top element. focus the input
-                focus(this._element);
-            }
+            focus(this._element);
             return;
         }
 
@@ -193,6 +194,7 @@ AutoComplete.prototype = {
             return;
         }
 
+        // https://github.com/isaacs/minimatch/blob/master/minimatch.js
         var sanitized = input.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
         var re = new RegExp("^" + sanitized + "", "i");
 
