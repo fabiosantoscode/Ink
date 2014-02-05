@@ -113,7 +113,8 @@ Ink.requireModules(['Ink.UI.AutoComplete_1', 'Ink.Dom.Element_1', 'Ink.Dom.Css_1
     });
 
     testAutoComplete('options.suggestionsURIParam', function (comp) {
-        equal(comp._getSuggestionsURI('THE_TEXT'), '/?param=THE%20TEXT');
+        equal(comp._getSuggestionsURI('THE_TEXT'), '/?param=THE_TEXT');
+        equal(comp._getSuggestionsURI('THE TEXT'), '/?param=THE%20TEXT');
     }, {suggestionsURIParam: 'param', suggestionsURI: '/' });
 
     module('keyboard navigation');

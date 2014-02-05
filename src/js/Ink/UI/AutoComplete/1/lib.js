@@ -168,8 +168,9 @@ AutoComplete.prototype = {
             suggestionsUri = this._options.getSuggestionsURI(input, this);
         } else if (this._options.suggestionsURIParam) {
             var url = Url.parseUrl(suggestionsUri);
-            url[this._options.suggestionsURIParam] = input;
-            suggestionsUri = Url.format(url);
+            var query = Url.getQueryString(suggestionsUri);
+            query[this._options.suggestionsURIParam] = input;
+            suggestionsUri = Url.genQueryString(Url.format(url), query);
         }
         return suggestionsUri;
     },

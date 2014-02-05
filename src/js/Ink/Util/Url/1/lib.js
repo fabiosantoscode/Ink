@@ -105,10 +105,9 @@ Ink.createModule('Ink.Util.Url', '1', [], function() {
          *         // }
          *     });
          */
-        getQueryString: function(str)
-        {
+        getQueryString: function(str) {
             var url;
-            if(str && typeof(str) !== 'undefined') {
+            if(typeof(str) !== 'undefined') {
                 url = str;
             } else {
                 url = this.getUrl();
@@ -294,37 +293,29 @@ Ink.createModule('Ink.Util.Url', '1', [], function() {
          * @return {String} Full URL.
          */
         format: function (urlObj) {
-            var protocol = '';
-            var host = '';
-            var path = '';
-            var frag = '';
-            var query = '';
+            var protocol
+            var host
+            var path
+            var frag
+            var query
 
-            if (typeof urlObj.protocol === 'string') {
-                protocol = urlObj.protocol + '//';  // here it comes with the colon
-            } else if (typeof urlObj.scheme === 'string')  {
-                protocol = urlObj.scheme + '://';
-            }
+            protocol = typeof urlObj.protocol === 'string' ? urlObj.protocol + '//' :  // here it comes with the colon
+                       typeof urlObj.scheme === 'string' ? urlObj.scheme + '://' : '';
 
             host = urlObj.host || urlObj.hostname || '';
             path = urlObj.path || '';
 
-            if (typeof urlObj.query === 'string') {
-                query = urlObj.query;
-            } else if (typeof urlObj.search === 'string') {
-                query = urlObj.search.replace(/^\?/, '');
-            }
-            if (typeof urlObj.fragment === 'string') {
-                frag =  urlObj.fragment;
-            } else if (typeof urlObj.hash === 'string') {
-                frag = urlObj.hash.replace(/#$/, '');
-            }
+            query = typeof urlObj.query === 'string' ? urlObj.query :
+                    typeof urlObj.search === 'string' ? urlObj.search : '';
+
+            frag = typeof urlObj.fragment === 'string' ? urlObj.fragment :
+                   typeof urlObj.hash === 'string' ? urlObj.hash.replace(/#$/, '') : '';
 
             return [
                 protocol,
                 host,
                 path,
-                query && '?' + query,
+                query && '?' + query.replace(/^\?/, ''),
                 frag && '#' + frag
             ].join('');
         },
@@ -338,22 +329,15 @@ Ink.createModule('Ink.Util.Url', '1', [], function() {
          * @public
          * @static
          */
-        currentScriptElement: function(match)
-        {
+        currentScriptElement: function(match) {
             var aScripts = document.getElementsByTagName('script');
-            if(typeof(match) === 'undefined') {
-                if(aScripts.length > 0) {
-                    return aScripts[(aScripts.length - 1)];
-                } else {
-                    return false;
-                }
+            if(!match) {
+                return aScripts[(aScripts.length - 1)] || false;
             } else {
-                var curScript = false;
-                var re = new RegExp(""+match+"", "i");
+                match = match.toLowerCase();
                 for(var i=0, total = aScripts.length; i < total; i++) {
-                    curScript = aScripts[i];
-                    if(re.test(curScript.src)) {
-                        return curScript;
+                    if (aScripts[i].src.toLowerCase() === match) {
+                        return aScripts[i];
                     }
                 }
                 return false;
