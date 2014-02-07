@@ -1175,26 +1175,16 @@ Ink.createModule('Ink.Net.Ajax', '1', [], function() {
          * @param {Function}  listener
          */
         safeCall: function(listener, first/*, second*/) {
-            function rethrow(exception){
-                setTimeout(function() {
-                    // Rethrow exception so it'll land in
-                    // the error console, firebug, whatever.
-                    if (exception.message) {
-                        exception.message += '\n'+(exception.stacktrace || exception.stack || '');
-                    }
-                    throw exception;
-                }, 1);
-            }
             if (typeof this.options[listener] === 'function') {
                 //SAPO.safeCall(this, this.options[listener], first, second);
                 //return object[listener].apply(object, [].slice.call(arguments, 2));
                 try {
                     this.options[listener].apply(this, [].slice.call(arguments, 1));
                 } catch(ex) {
-                    rethrow(ex);
+                    Ink.error(ex);
                 }
             } else if (first && window.Error && (first instanceof Error)) {
-                rethrow(first);
+                Ink.error(first);
             }
         },
 
@@ -1287,7 +1277,7 @@ Ink.createModule('Ink.Net.Ajax', '1', [], function() {
                     if (crossDomain) {
                         // Need explicit handling because Mozila aborts
                         // the script and Chrome fails silently.per the spec
-                        throw this.makeError(18, 'NETWORK_ERR');
+                        throw this.makeError(18, 'NETWORK_ERR: Set optons.cors to true if you intend to make a cross-domain request.');
                     } else {
                         this.startTime = new Date().getTime();
                         this.transport.send(params);
@@ -11471,10 +11461,9 @@ Ink.createModule('Ink.Util.Url', '1', [], function() {
          *         // }
          *     });
          */
-        getQueryString: function(str)
-        {
+        getQueryString: function(str) {
             var url;
-            if(str && typeof(str) !== 'undefined') {
+            if(typeof(str) !== 'undefined') {
                 url = str;
             } else {
                 url = this.getUrl();
@@ -11660,37 +11649,29 @@ Ink.createModule('Ink.Util.Url', '1', [], function() {
          * @return {String} Full URL.
          */
         format: function (urlObj) {
-            var protocol = '';
-            var host = '';
-            var path = '';
-            var frag = '';
-            var query = '';
+            var protocol
+            var host
+            var path
+            var frag
+            var query
 
-            if (typeof urlObj.protocol === 'string') {
-                protocol = urlObj.protocol + '//';  // here it comes with the colon
-            } else if (typeof urlObj.scheme === 'string')  {
-                protocol = urlObj.scheme + '://';
-            }
+            protocol = typeof urlObj.protocol === 'string' ? urlObj.protocol + '//' :  // here it comes with the colon
+                       typeof urlObj.scheme === 'string' ? urlObj.scheme + '://' : '';
 
             host = urlObj.host || urlObj.hostname || '';
             path = urlObj.path || '';
 
-            if (typeof urlObj.query === 'string') {
-                query = urlObj.query;
-            } else if (typeof urlObj.search === 'string') {
-                query = urlObj.search.replace(/^\?/, '');
-            }
-            if (typeof urlObj.fragment === 'string') {
-                frag =  urlObj.fragment;
-            } else if (typeof urlObj.hash === 'string') {
-                frag = urlObj.hash.replace(/#$/, '');
-            }
+            query = typeof urlObj.query === 'string' ? urlObj.query :
+                    typeof urlObj.search === 'string' ? urlObj.search : '';
+
+            frag = typeof urlObj.fragment === 'string' ? urlObj.fragment :
+                   typeof urlObj.hash === 'string' ? urlObj.hash.replace(/#$/, '') : '';
 
             return [
                 protocol,
                 host,
                 path,
-                query && '?' + query,
+                query && '?' + query.replace(/^\?/, ''),
                 frag && '#' + frag
             ].join('');
         },
@@ -11704,22 +11685,15 @@ Ink.createModule('Ink.Util.Url', '1', [], function() {
          * @public
          * @static
          */
-        currentScriptElement: function(match)
-        {
+        currentScriptElement: function(match) {
             var aScripts = document.getElementsByTagName('script');
-            if(typeof(match) === 'undefined') {
-                if(aScripts.length > 0) {
-                    return aScripts[(aScripts.length - 1)];
-                } else {
-                    return false;
-                }
+            if(!match) {
+                return aScripts[(aScripts.length - 1)] || false;
             } else {
-                var curScript = false;
-                var re = new RegExp(""+match+"", "i");
+                match = match.toLowerCase();
                 for(var i=0, total = aScripts.length; i < total; i++) {
-                    curScript = aScripts[i];
-                    if(re.test(curScript.src)) {
-                        return curScript;
+                    if (aScripts[i].src.toLowerCase() === match) {
+                        return aScripts[i];
                     }
                 }
                 return false;
@@ -13316,6 +13290,336 @@ Ink.createModule('Ink.UI.Animate', 1, ['Ink.UI.Common_1', 'Ink.Dom.Event_1', 'In
 });
 
 
+Ink.createModule('Ink.UI.AutoComplete', '1', ['Ink.UI.Common_1', 'Ink.Util.Array_1', 'Ink.Dom.Element_1', 'Ink.Dom.Css_1', 'Ink.Dom.Event_1', 'Ink.Util.Url_1', 'Ink.Net.Ajax_1'], function (Common, InkArray, InkElement, Css, InkEvent, Url, Ajax) {
+'use strict';
+
+function focus(elem) {
+    if (elem) {
+        try {
+            elem.focus();
+        } catch(e) { }
+    }
+}
+
+/**
+ * @module Ink.UI.AutoComplete_1
+ */
+function AutoComplete(elem, options) {
+    this._init(elem, options);
+}
+
+AutoComplete.prototype = {
+    /**
+     * @class Ink.UI.AutoComplete_1
+     * @constructor
+     *
+     * @param {String|DOMElement} elem String or DOMElement for the input field
+     * @param {String}   [options.suggestionsURI] URI of the endpoint to query for suggestions
+     * @param {Function} [options.getSuggestionsURI] Function taking `(input value, autocomplete instance)` and returning the URL with suggestions.
+     * @param {String}   [options.suggestionsURIParam='input'] Choose the URL parameter where we put the user input when getting suggestions. If you choose "asd", the url will be `"suggestionsURI?asd=user-input"`.
+     * @param {Function} [options.transformResponse] You can provide a function to digest a response from your endpoint into a format that AutoComplete understands. Takes `(Ink.Net.Ajax response)`, returns `{ suggestions: [], error: Error || null }`
+     * @param {Function} [options.onAjaxError] A callback for when there are AJAX errors
+     * @param {Array}    [options.suggestions] A list of suggestions, for when you have them around.
+     * @param {Integer}  [options.resultLimit=10] How many suggestions to show on the dropdown.
+     * @param {Integer}  [options.minText=3] How many characters the user needs to type before we list suggestions.
+     * @param {String|DOMElement} [options.target] (Advanced) element where suggestions appear.
+     */
+    _init: function(elem, options) {
+        this._element = Common.elOrSelector(elem);
+
+        this._options = Common.options({
+            suggestionsURI: ['String', null],
+            getSuggestionsURI: ['Function', null],
+            suggestionsURIParam: ['String', 'input'],
+            transformResponse: ['Function', null],
+            targetClassName: ['String', 'autocomplete-target'],
+            suggestionUlClassName: ['String', 'autocomplete-suggestions'],
+            onAjaxError: ['Function', null],
+            suggestions: ['Object', null],
+            onSelect: ['Function', null],
+            resultLimit: ['Integer', 10],
+            minText: ['Integer', 3],
+            target: ['String', null]
+        }, options || {}, this._element);
+
+        if (!(this._options.suggestionsURI || this._options.suggestions || this._options.getSuggestionsURI)) {
+            Ink.error('Ink.UI.AutoComplete: You must specify the endpoint or array for autocomplete suggestions!');
+            Ink.log('Use the suggestionsURI (URI string), suggestions (array), or getSuggestionsURI (function (typedCharacters) {}) options.');
+            return;
+        }
+
+        if (!this._options.target) {
+            this._target = InkElement.create('div');
+            InkElement.insertAfter(this._target, this._element);
+        } else {
+            this._target = Common.elOrSelector(this._options.target);
+        }
+
+        Css.addClassName(this._target, 'hide-all');
+        Css.addClassName(this._target, this._options.targetClassName);
+
+        this._addEvents();
+
+        this._getSuggestionsThroughAjax = InkEvent.throttle(this._getSuggestionsThroughAjax, 200);
+    },
+
+    _addEvents: function() {
+        this._handlers = {
+            keydown: InkEvent.observe(this._element, 'keydown', Ink.bindEvent(this._onKeyDown, this)),
+            valueskeydown: InkEvent.observeDelegated(this._target, 'keydown', '[data-value]', Ink.bindEvent(this._onKeyDown, this)),
+            keyup: InkEvent.observe(this._element, 'keyup', Ink.bindEvent(this._onKeyUp, this)),
+            windowclick: InkEvent.observe(window, 'click', Ink.bindEvent(this._onClickWindow, this)),
+            suggestionclick: InkEvent.observeDelegated(this._target, 'click', 'a', Ink.bindEvent(this._onSuggestionClick, this))
+        };
+    },
+
+    _onKeyUp: function() {
+        var value = this._getInputValue();
+
+        if(value !== this._oldValue) {
+            this._oldValue = value;
+
+            if (value.length >= this._options.minText) {
+                // get suggestions based on name
+                this._clear();
+                this._getSuggestions(value);
+            } else {
+                this.close();
+            }
+        }
+
+        return;
+    },
+
+    _onKeyDown: function (event) {
+        if (!this.isOpen()) { return; }
+
+        var target = InkEvent.element(event);
+
+        var keyCode = event.keyCode || event.which;
+        if (keyCode === InkEvent.KEY_DOWN || keyCode === InkEvent.KEY_UP) {
+            if (target === this._element && keyCode === InkEvent.KEY_DOWN) {
+                // Focus first
+                focus(Ink.s('a', this._target));
+            } else {
+                this._focusRelative(target, keyCode === InkEvent.KEY_DOWN ? 'down' : 'up');
+            }
+            InkEvent.stopDefault(event);
+        }
+
+        if (keyCode === InkEvent.KEY_ESC) {
+            this.close();
+            focus(this._element);
+        }
+
+        if (keyCode === InkEvent.KEY_TAB && target !== this._element) {
+            var data = InkElement.data(target);
+            if (data.value) {
+                this._element.value = data.value;
+            }
+
+            this.close();
+            focus(this._element);
+        }
+    },
+
+    _focusRelative: function (element, downUp) {
+        var li = InkElement.findUpwardsBySelector(element, 'li');
+
+        var siblingName = downUp === 'down' ? 'nextSibling' : 'previousSibling';
+
+        // Advance until we're at a <li> with an <a> with the [data-value] attr
+        do {
+            li = li[siblingName];
+        } while (li && !Ink.s('[data-value]', li));
+
+        // Trying to go up the first, or down the last.
+        if (!li) {
+            focus(this._element);
+            return;
+        }
+
+        focus(Ink.s('[data-value]', li));
+    },
+
+    _getFocusedValue: function () {
+        if (InkElement.isAncestorOf(this._target, document.activeElement)) {
+            return document.activeElement;
+        }
+    },
+
+    _getInputValue: function() {
+        if (''.trim) {
+            return this._element.value.trim();
+        } else {
+            return this._element.value.replace(/^\s+/, '').replace(/\s+$/, '');
+        }
+    },
+
+    _getSuggestions: function() {
+        var input = this._getInputValue();
+
+        if(this._options.suggestions){
+            this._searchSuggestions(input, this._options.suggestions);
+        } else {
+            this._getSuggestionsThroughAjax(input);
+        }
+    },
+
+    _getSuggestionsURI: function (input) {
+        var suggestionsUri = this._options.suggestionsURI;
+        if (this._options.getSuggestionsURI) {
+            suggestionsUri = this._options.getSuggestionsURI(input, this);
+        } else if (this._options.suggestionsURIParam) {
+            var url = Url.parseUrl(suggestionsUri);
+            var query = Url.getQueryString(suggestionsUri);
+            query[this._options.suggestionsURIParam] = input;
+            suggestionsUri = Url.genQueryString(Url.format(url), query);
+        }
+        return suggestionsUri;
+    },
+
+    _getSuggestionsThroughAjax: function (input) {
+        if (this.ajaxRequest) {
+            // close connection
+            try { this.ajaxRequest.transport.abort(); } catch (e) {}
+            this.ajaxRequest = null;
+        }
+
+        this.ajaxRequest = new Ajax(this._getSuggestionsURI(input), {
+            method: 'get',
+            onSuccess: Ink.bindMethod(this, '_onAjaxSuccess'),
+            onFailure: Ink.bindMethod(this, '_onAjaxFailure')
+        });
+    },
+
+    _searchSuggestions: function(input, suggestions) {
+        if (!input) {
+            this.close();
+            return;
+        }
+
+        // https://github.com/isaacs/minimatch/blob/master/minimatch.js
+        var sanitized = input.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+        var re = new RegExp("^" + sanitized + "", "i");
+
+        suggestions = InkArray.filter(suggestions, function (suggestion) {
+            return suggestion.match(re);
+        });
+
+        this._renderSuggestions(suggestions);
+    },
+
+    _digestAjaxResponse: function(response) {
+        if (this._options.transformResponse) {
+            return this._options.transformResponse(response, this);
+        } else if (typeof response.responseJSON.suggestions === 'object') {
+            return response.responseJSON;
+        } else {
+            var res = { suggestions: response.responseJSON, error: false };
+            return res;
+        }
+    },
+
+    _onAjaxSuccess: function(obj) {
+        var res = this._digestAjaxResponse(obj);
+
+        if (typeof res.error !== 'object') {
+            this._renderSuggestions(res.suggestions);
+        } else if (this._options.onAjaxError) {
+            this._options.onAjaxError(res.error);
+        }
+    },
+
+    _onAjaxFailure: function(err) {
+        if (this._options.onAjaxError) {
+            this._options.onAjaxError(err);
+        }
+        Ink.error('[Ink.UI.AutoComplete_1] Ajax failure: ', err);
+    },
+
+    _clear: function() {
+        var aUl = this._target.getElementsByTagName('ul');
+        if(aUl.length > 0) {
+            aUl[0].parentNode.removeChild(aUl[0]);
+        }
+    },
+
+    _onSuggestionClick: function(event) {
+        var suggestion = InkEvent.element(event);
+        var targetValue = InkElement.data(suggestion).value;
+
+        if (targetValue !== undefined) {
+            if (this._options.onSelect) { this._options.onSelect(targetValue, this); }
+            this.setValue(targetValue);
+            this.close();
+            InkEvent.stopDefault(event);
+        }
+    },
+
+    _renderSuggestions: function(aSuggestions) {
+        this._clear();
+
+        if (!aSuggestions.length) { return; }
+
+        //var str = '';
+        var ul = InkElement.create('ul', {
+            className: this._options.suggestionUlClassName
+        });
+
+        var li;
+
+        var len = Math.min(aSuggestions.length, this._options.resultLimit);
+        for (var i = 0; i < len; i++) {
+            li = InkElement.create('li', {
+                insertBottom: ul
+            });
+
+            InkElement.create('a', {
+                href: '#',
+                'data-value': aSuggestions[i],
+                setTextContent: aSuggestions[i],
+                insertBottom: li
+            });
+        }
+
+        this._open();
+
+        //this._target.innerHTML = str;
+        this._target.appendChild(ul);
+    },
+
+    isOpen: function() {
+        return !Css.hasClassName(this._target, 'hide-all');
+    },
+
+    /**
+     * Hide the suggestion box.
+     *
+     * @method close
+     **/
+    close: function() {
+        Css.addClassName(this._target, 'hide-all');
+    },
+
+    _open: function() {
+        Css.removeClassName(this._target, 'hide-all');
+    },
+
+    _onClickWindow: function() {
+        this.close();
+    },
+
+    setValue: function(value) {
+        //value = value.replace(/([^@]+)@(.*)/, "$1");
+        this._element.value = value;
+    }
+};
+
+return AutoComplete;
+
+});
+
 /**
  * @module Ink.UI.Carousel_1
  * @author inkdev AT sapo.pt
@@ -13368,11 +13672,11 @@ Ink.createModule('Ink.UI.Carousel', '1',
         var opts = this._options = Common.options({
             autoAdvance:    ['Integer', 0],
             axis:           ['String', 'x'],
-            initialPage:   ['Integer', 0],
+            initialPage:    ['Integer', 0],
             hideLast:       ['Boolean', false],
             center:         ['Boolean', false],
             keyboardSupport:['Boolean', false],
-            pagination:     ['Object', null],
+            pagination:     ['String', null],
             onChange:       ['Function', null],
             swipe:          ['Boolean', true]
             // TODO exponential swipe
@@ -13466,13 +13770,6 @@ Ink.createModule('Ink.UI.Carousel', '1',
             this._numPages = numPages;
             this._deltaLength = this._slidesPerPage * this._elLength;
             
-            if (this._isY) {
-                this._element.style.width = size(this._liEls[0], true) + 'px';
-                this._ulEl.style.width  = size(this._liEls[0], true) + 'px';
-            } else {
-                this._ulEl.style.height = size(this._liEls[0], true) + 'px';
-            }
-
             this._center();
             this._updateHider();
             this._IE7();
@@ -16856,6 +17153,17 @@ Ink.createModule("Ink.UI.Droppable","1",["Ink.Dom.Element_1", "Ink.Dom.Event_1",
 Ink.createModule('Ink.UI.FormValidator', '1', ['Ink.Dom.Element_1', 'Ink.Dom.Css_1','Ink.Util.Validator_1','Ink.Dom.Selector_1'], function( InkElement, Css, InkValidator , Selector) {
     'use strict';
 
+    function elementsWithSameName(elm) {
+        if (!elm.name) { return []; }
+        if (!elm.form) {
+            return Selector.select('name="' + elm.name + '"');
+        }
+        var ret = elm.form[elm.name];
+        if(typeof(ret.length) === 'undefined') {
+            ret = [ret];
+        }
+        return ret;
+    }
     /**
      * @class Ink.UI.FormValidator
      * @version 1
@@ -17041,8 +17349,7 @@ Ink.createModule('Ink.UI.FormValidator', '1', ['Ink.Dom.Element_1', 'Ink.Dom.Css
          *             ]
          *         });
          */
-        validate: function(elm, options)
-        {
+        validate: function(elm, options) {
             this._free();
 
             options = Ink.extendObj({
@@ -17062,6 +17369,7 @@ Ink.createModule('Ink.UI.FormValidator', '1', ['Ink.Dom.Element_1', 'Ink.Dom.Css
 
             if(typeof(this.element.id) === 'undefined' || this.element.id === null || this.element.id === '') {
                 // generate a random ID
+                // TODO ugly and potentially problematic, and you know Murphy's law.
                 this.element.id = 'ink-fv_randomid_'+(Math.round(Math.random() * 99999));
             }
 
@@ -17144,7 +17452,7 @@ Ink.createModule('Ink.UI.FormValidator', '1', ['Ink.Dom.Element_1', 'Ink.Dom.Css
             //     return;
             // }
 
-            this.elements[this.element.id] = [];
+            var elements = this.elements[this.element.id] = [];
             this.confirmElms[this.element.id] = [];
             //console.log(this.element);
             //console.log(this.element.elements);
@@ -17152,16 +17460,17 @@ Ink.createModule('Ink.UI.FormValidator', '1', ['Ink.Dom.Element_1', 'Ink.Dom.Css
             var curElm = false;
             for(var i=0, totalElm = formElms.length; i < totalElm; i++) {
                 curElm = formElms[i];
+                var type = (curElm.getAttribute('type') + '').toLowerCase();
 
-                if(curElm.getAttribute('type') !== null && curElm.getAttribute('type').toLowerCase() === 'radio') {
-                    if(this.elements[this.element.id].length === 0 ||
+                if (type === 'radio' || type === 'checkbox') {
+                    if(elements.length === 0 ||
                             (
-                             curElm.getAttribute('type') !== this.elements[this.element.id][(this.elements[this.element.id].length - 1)].getAttribute('type') &&
-                            curElm.getAttribute('name') !== this.elements[this.element.id][(this.elements[this.element.id].length - 1)].getAttribute('name')
+                             curElm.getAttribute('type') !== elements[elements.length - 1].getAttribute('type') &&
+                            curElm.getAttribute('name') !== elements[elements.length - 1].getAttribute('name')
                             )) {
                         for(var flag in this._flagMap) {
                             if(Css.hasClassName(curElm, flag)) {
-                                this.elements[this.element.id].push(curElm);
+                                elements.push(curElm);
                                 break;
                             }
                         }
@@ -17173,7 +17482,7 @@ Ink.createModule('Ink.UI.FormValidator', '1', ['Ink.Dom.Element_1', 'Ink.Dom.Css
                                 this.confirmElms[this.element.id].push(curElm);
                                 this.hasConfirm[this.element.id] = true;
                             }*/
-                            this.elements[this.element.id].push(curElm);
+                            elements.push(curElm);
                             break;
                         }
                     }
@@ -17196,8 +17505,7 @@ Ink.createModule('Ink.UI.FormValidator', '1', ['Ink.Dom.Element_1', 'Ink.Dom.Css
         _validateElements: function() {
             var oGroups;
             this._getElements();
-            //console.log('HAS CONFIRM', this.hasConfirm);
-            if(typeof(this.hasConfirm[this.element.id]) !== 'undefined' && this.hasConfirm[this.element.id] === true) {
+            if(this.hasConfirm[this.element.id] === true) {
                 oGroups = this._makeConfirmGroups();
             }
 
@@ -17213,10 +17521,8 @@ Ink.createModule('Ink.UI.FormValidator', '1', ['Ink.Dom.Element_1', 'Ink.Dom.Css
                 if(!curElm.disabled) {
                     for(var flag in this._flagMap) {
                         if(Css.hasClassName(curElm, flag)) {
-
                             if(flag !== 'ink-fv-custom' && flag !== 'ink-fv-confirm') {
                                 if(!this._isValid(curElm, flag)) {
-
                                     if(!inArray) {
                                         errors.push({elm: curElm, errors:[flag]});
                                         inArray = true;
@@ -17250,17 +17556,14 @@ Ink.createModule('Ink.UI.FormValidator', '1', ['Ink.Dom.Element_1', 'Ink.Dom.Css
          * @private
          * @return {Array} Array of errors that was passed as 2nd parameter (either changed, or not, depending if errors were found).
          */
-        _validateConfirmGroups: function(oGroups, errors)
-        {
+        _validateConfirmGroups: function(oGroups, errors) {
             //console.log(oGroups);
             var curGroup = false;
-            for(var i in oGroups) {
-                if (oGroups.hasOwnProperty(i)) {
-                    curGroup = oGroups[i];
-                    if(curGroup.length === 2) {
-                        if(curGroup[0].value !== curGroup[1].value) {
-                            errors.push({elm:curGroup[1], errors:['ink-fv-confirm']});
-                        }
+            for(var i in oGroups) if (oGroups.hasOwnProperty(i)) {
+                curGroup = oGroups[i];
+                if(curGroup.length === 2) {
+                    if(curGroup[0].value !== curGroup[1].value) {
+                        errors.push({elm:curGroup[1], errors:['ink-fv-confirm']});
                     }
                 }
             }
@@ -17300,9 +17603,9 @@ Ink.createModule('Ink.UI.FormValidator', '1', ['Ink.Dom.Element_1', 'Ink.Dom.Css
                 if(this.confirmElms[this.element.id].length === 2) {
                     oGroups = {
                         "ink-fv-confirm": [
-                                this.confirmElms[this.element.id][0],
-                                this.confirmElms[this.element.id][1]
-                            ]
+                            this.confirmElms[this.element.id][0],
+                            this.confirmElms[this.element.id][1]
+                        ]
                     };
                 }
                 return oGroups;
@@ -17347,13 +17650,6 @@ Ink.createModule('Ink.UI.FormValidator', '1', ['Ink.Dom.Element_1', 'Ink.Dom.Css
             var inputType = (elm.getAttribute('type') || '').toLowerCase();
             var value = this._trim(elm.value);
 
-            // When we're analyzing emails, telephones, etc, and the field is
-            // empty, we check if it is required. If not required, it's valid.
-            if (fieldType !== 'ink-fv-required' &&
-                    inputType !== 'checkbox' && inputType !== 'radio' &&
-                    value === '') {
-                return !Css.hasClassName(elm, 'ink-fv-required');
-            }
 
             switch(fieldType) {
                 case 'ink-fv-required':
@@ -17367,20 +17663,14 @@ Ink.createModule('Ink.UI.FormValidator', '1', ['Ink.Dom.Element_1', 'Ink.Dom.Css
                     if(inputType !== 'checkbox' && inputType !== 'radio' &&
                             value !== '') {
                         return true;  // A input type=text,email,etc.
-                    } else if(inputType === 'checkbox') {
-                        if(elm.checked === true) {
-                            return true;
-                        }
-                    } else if(inputType === 'radio') { // get top radio
-                        var aFormRadios = elm.form[elm.name];
-                        if(typeof(aFormRadios.length) === 'undefined') {
-                            aFormRadios = [aFormRadios];
-                        }
+                    } else if(inputType === 'checkbox' || inputType === 'radio') {
+                        var aFormRadios = elementsWithSameName(elm);
                         var isChecked = false;
                         // check if any input of the radio is checked
                         for(var i=0, totalRadio = aFormRadios.length; i < totalRadio; i++) {
                             if(aFormRadios[i].checked === true) {
                                 isChecked = true;
+                                break;
                             }
                         }
                         return isChecked;
@@ -17470,44 +17760,26 @@ Ink.createModule('Ink.UI.FormValidator', '1', ['Ink.Dom.Element_1', 'Ink.Dom.Css
             var controlElm = InkElement.findUpwardsByClass(
                     curElm, 'control');
 
-            var inputType = curElm.getAttribute('type');
+            var errorClasses = [
+                this._errorClassName,
+                this._errorTypeClassName].join(' ');
 
-            if(inputType !== 'radio') {
-                var errorClasses = [
-                    this._errorClassName,
-                    this._errorTypeClassName].join(' ');
+            var errorMsg = InkElement.create('p', {
+                className: errorClasses
+            });
 
-                var errorMsg = InkElement.create('p', {
-                    className: errorClasses
-                });
-
-                if(error.errors[0] !== 'ink-fv-custom') {
-                    errorMsg.innerHTML = this._flagMap[error.errors[0]].msg;
-                } else {
-                    errorMsg.innerHTML = error.custom[0].msg;
-                }
-
-                if(inputType !== 'checkbox') {
-                    InkElement.insertAfter(errorMsg, curElm);
-                    if (controlElm) {
-                        if(error.errors[0] === 'ink-fv-required') {
-                            Css.addClassName(controlGroupElm, 'validation error');
-                        } else {
-                            Css.addClassName(controlGroupElm, 'validation warning');
-                        }
-                    }
-                } else {
-                    /* // TODO checkbox... does not work with this CSS
-                    curElm.parentNode.appendChild(errorMsg);
-                    if(Css.hasClassName(curElm.parentNode.parentNode, 'control-group')) {
-                        Css.addClassName(curElm.parentNode.parentNode, 'control');
-                        Css.addClassName(curElm.parentNode.parentNode, 'validation');
-                        Css.addClassName(curElm.parentNode.parentNode, 'error');
-                    }*/
-                }
+            if(error.errors[0] !== 'ink-fv-custom') {
+                errorMsg.innerHTML = this._flagMap[error.errors[0]].msg;
             } else {
-                if(controlGroupElm) {
-                    Css.addClassName(controlGroupElm, ['validation', 'error']);
+                errorMsg.innerHTML = error.custom[0].msg;
+            }
+
+            InkElement.insertAfter(errorMsg, controlElm || controlGroupElm || curElm);
+            if (controlElm) {
+                if(error.errors[0] === 'ink-fv-required') {
+                    Css.addClassName(controlGroupElm, 'validation error');
+                } else {
+                    Css.addClassName(controlGroupElm, 'validation warning');
                 }
             }
         },
@@ -17534,7 +17806,7 @@ Ink.createModule('Ink.UI.FormValidator', '1', ['Ink.Dom.Element_1', 'Ink.Dom.Css
                         Css.removeClassName(control, ['validation', 'error', 'warning']);
                     }
 
-                    if(Css.hasClassName(curElm,'tip error', true /*both*/)) {
+                    if(Css.hasClassName(curElm, this._errorClassName, true /*both*/)) {
                         InkElement.remove(curElm);
                     }
                 }
