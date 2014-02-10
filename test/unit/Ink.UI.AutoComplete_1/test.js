@@ -82,11 +82,31 @@ Ink.requireModules(['Ink.UI.AutoComplete_1', 'Ink.Dom.Element_1', 'Ink.Dom.Css_1
 
     typeSomethingAndTest('type a few characters, click a suggestion, input element changes value', function (_, __, input, target) {
         var a = Selector.select('a[data-value="audi"]', target);
-        ok(a.length);
+        ok(a.length, 'sanity check');
         Syn.click(a[0], function () {
             equal(input.value, 'audi');
             start();
         });
+    });
+
+    typeSomethingAndTest('type a few characters, focus + press enter on a suggestion, input element changes value', function (_, __, input, target) {
+        var a = Selector.select('a[data-value="audi"]', target);
+        ok(a.length, 'sanity check');
+        Syn.type(a[0], '[enter]', function () {
+            equal(input.value, 'audi');
+            start();
+        });
+    });
+
+    test('transformResponseRow is called for each row when searchSuggestions is called.', function() {
+        var container = makeContainer();
+        var autocomplete = new AutoComplete(Ink.s('input', container), { target: null, suggestions: ['sugg1', 'sugg2'] });
+        var transformResponseRow = sinon.spy(autocomplete._options, 'transformResponseRow');
+        autocomplete._searchSuggestions('something', autocomplete._options.suggestions);
+        equal(transformResponseRow.callCount, 2);
+        equal(transformResponseRow.firstCall.args.length, 1);
+        equal(transformResponseRow.firstCall.args[0], 'sugg1');
+        equal(transformResponseRow.lastCall.args[0], 'sugg2');
     });
 
     (function () {
@@ -94,8 +114,10 @@ Ink.requireModules(['Ink.UI.AutoComplete_1', 'Ink.Dom.Element_1', 'Ink.Dom.Css_1
         typeSomethingAndTest('When clicking a suggestion, options.onSelect is called', function (instance, __, input, target) {
             var a = Selector.select('a[data-value="audi"]', target);
             Syn.click(a[0], function () {
-                ok(spy.called, 'onSelect called');
-                ok(spy.calledWith('audi', instance), 'onSelect called with suggestion and instance');
+                ok(spy.calledOnce, 'onSelect called');
+                deepEqual(spy.lastCall.args[0], 'audi', 'onSelect called with suggestion, instance');
+                deepEqual(spy.lastCall.args[1], 'audi', 'onSelect called with suggestion, instance');
+                strictEqual(spy.lastCall.thisValue, instance, 'onSelect called with this=instance');
                 start();
             });
         }, {onSelect: spy});
@@ -116,6 +138,12 @@ Ink.requireModules(['Ink.UI.AutoComplete_1', 'Ink.Dom.Element_1', 'Ink.Dom.Css_1
         equal(comp._getSuggestionsURI('THE_TEXT'), '/?param=THE_TEXT');
         equal(comp._getSuggestionsURI('THE TEXT'), '/?param=THE%20TEXT');
     }, {suggestionsURIParam: 'param', suggestionsURI: '/' });
+
+    testAutoComplete('options.outputElement gets filled in with the new value', function (comp, _, input) {
+        comp._select({ id: 'urmom' });
+        equal(comp._options.outputElement.value, 'urmom', 'outputElement gets the selected value');
+        notEqual(input.value, 'urmom', 'NOT the input');
+    }, { outputElement: InkElement.create('input', { type: 'hidden' }) });
 
     module('keyboard navigation');
 
