@@ -194,7 +194,7 @@ Ink.requireModules(['Ink.UI.AutoComplete_1', 'Ink.Dom.Element_1', 'Ink.Dom.Css_1
                 Syn.type('[down]', secondOne, function () {
                     equal(input, document.activeElement, 'pressing down again goes back to the input');
                     Syn.type('[up]', input, function () {
-                        equal(input, document.activeElement, 'pressing up from the input stays in the input');
+                        equal(secondOne, document.activeElement, 'pressing up from the input selects the last one');
                         start();
                     });
                 });

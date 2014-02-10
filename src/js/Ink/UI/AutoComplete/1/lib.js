@@ -112,12 +112,8 @@ AutoComplete.prototype = {
 
         var keyCode = event.keyCode || event.which;
         if (keyCode === InkEvent.KEY_DOWN || keyCode === InkEvent.KEY_UP) {
-            if (target === this._element && keyCode === InkEvent.KEY_DOWN) {
-                // Focus first
-                focus(Ink.s('a', this._target));
-            } else {
-                this._focusRelative(target, keyCode === InkEvent.KEY_DOWN ? 'down' : 'up');
-            }
+            var downUp = keyCode === InkEvent.KEY_DOWN ? 'down' : 'up';
+            this._cycleFocus(target, downUp);
             InkEvent.stopDefault(event);
         }
 
@@ -130,6 +126,20 @@ AutoComplete.prototype = {
             this._select(target);
             this.close();
             focus(this._element);
+        }
+    },
+
+    _cycleFocus: function (target, downUp) {
+        if (target === this._element) {
+            if (downUp === 'down') {
+                focus(Ink.s('a', this._target));
+            } else {
+                var links = this._target.getElementsByTagName('a');
+                focus(links[links.length - 1]);
+            }
+            return;
+        } else {
+            this._focusRelative(target, downUp);
         }
     },
 
