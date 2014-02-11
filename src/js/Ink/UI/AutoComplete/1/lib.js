@@ -9,6 +9,12 @@ function focus(elem) {
     }
 }
 
+function callBack(func, thisValue/* args...*/) {
+    if (typeof func === 'function') {
+        return func.apply(thisValue, [].slice.call(arguments, 2));
+    }
+}
+
 /**
  * @module Ink.UI.AutoComplete_1
  */
@@ -43,7 +49,7 @@ AutoComplete.prototype = {
             suggestionsURI: ['String', null],
             getSuggestionsURI: ['Function', null],
             suggestionsURIParam: ['String', 'input'],
-            transformResponse: ['Function', null],
+            transformResponse: ['Function', function res() {  }],
             transformResponseRow: ['Function', function (row) { return { id: row, value: row, display: row }; }],
             targetClassName: ['String', 'autocomplete-target'],
             suggestionUlClassName: ['String', 'autocomplete-suggestions'],
@@ -67,6 +73,10 @@ AutoComplete.prototype = {
             InkElement.insertAfter(this._target, this._element);
         } else {
             this._target = Common.elOrSelector(this._options.target);
+        }
+
+        if (this._options.outputElement) {
+            this._options.outputElement = Common.elOrSelector(this._options.target);
         }
 
         Css.addClassName(this._target, 'hide-all');
@@ -164,19 +174,22 @@ AutoComplete.prototype = {
 
     _select: function (data) {
         if (Common.isDOMElement(data)) {
+            var display = data.innerHTML;
             data = InkElement.data(data);
-            data.display = data.innerHTML;
+            data.display = display;
         }
 
         var id = data.id || data.value;
 
         if (!id) { return false; }
 
-        (this._options.outputElement || this._element).value = id;
-
-        if (typeof this._options.onSelect === 'function') {
-            this._options.onSelect.call(this, id, data.value, data.display);
+        if (this._options.outputElement) {
+            this._outputElement.value = id;  // This could be an ugly GUID
         }
+
+        this._element.value = data.value;  // This is what the user was typing against.
+
+        callBack(this._options.onSelect, this, data);
 
         return true;
     },
@@ -254,13 +267,12 @@ AutoComplete.prototype = {
     },
 
     _digestAjaxResponse: function(response) {
-        if (this._options.transformResponse) {
-            return this._options.transformResponse(response, this);
+        if (typeof this._options.transformResponse === 'function') {
+            return this._options.transformResponse.call(this, response);
         } else if (typeof response.responseJSON.suggestions === 'object') {
             return response.responseJSON;
         } else {
-            var res = { suggestions: response.responseJSON, error: false };
-            return res;
+            return { suggestions: response.responseJSON, error: false };
         }
     },
 
@@ -269,15 +281,13 @@ AutoComplete.prototype = {
 
         if (!res.error && typeof res.error !== 'object') {
             this._searchSuggestions(input, res.suggestions);
-        } else if (this._options.onAjaxError) {
-            this._options.onAjaxError(res.error);
+        } else {
+            callBack(this._options.onAjaxError, this, res.error);
         }
     },
 
     _onAjaxFailure: function(err) {
-        if (this._options.onAjaxError) {
-            this._options.onAjaxError(err);
-        }
+        callBack(this._options.onAjaxError, this, err);
         Ink.error('[Ink.UI.AutoComplete_1] Ajax failure: ', err);
     },
 

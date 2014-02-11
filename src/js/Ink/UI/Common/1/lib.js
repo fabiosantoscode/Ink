@@ -222,7 +222,6 @@ Ink.createModule('Ink.UI.Common', '1', ['Ink.Dom.Element_1', 'Ink.Net.Ajax_1','I
                     }
                     if (!(lType in Common._coerce_funcs)) {
                         invalid('Ink.UI.Common.options: ' + defaults[key][0] + ' is not a valid type. Use one of ' + keys(Common._coerce_funcs).join(', '));
-
                     }
                     if (!defaults[key].length || defaults[key].length > 2) {
                         invalid('the "defaults" argument must be an object mapping option names to [typestring, optional] arrays.');
