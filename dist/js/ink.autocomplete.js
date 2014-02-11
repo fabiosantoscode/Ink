@@ -25,8 +25,12 @@ AutoComplete.prototype = {
      * @param {String}   [options.suggestionsURI] URI of the endpoint to query for suggestions
      * @param {Function} [options.getSuggestionsURI] Function taking `(input value, autocomplete instance)` and returning the URL with suggestions.
      * @param {String}   [options.suggestionsURIParam='input'] Choose the URL parameter where we put the user input when getting suggestions. If you choose "asd", the url will be `"suggestionsURI?asd=user-input"`.
+     * @param {String}   [options.targetClassName='autocomplete-target'] The target of the suggestions list
+     * @param {String}   [options.suggestionUlClassName='autocomplete-target'] The target of the suggestions list
      * @param {Function} [options.transformResponse] You can provide a function to digest a response from your endpoint into a format that AutoComplete understands. Takes `(Ink.Net.Ajax response)`, returns `{ suggestions: [], error: Error || null }`
+     * @param {Function} [options.transformResponseRow=function(row){return{id:row,value:row,display:row};}] A function which takes the row from the Ajax response or your object, and returns an object `{ id, value, [optional] display }`. The "id" will be the second argument to onSelect when done, and the "display" is what gets displayed to the user. use "displayHTML" if you don't want HTML to be escaped.
      * @param {Function} [options.onAjaxError] A callback for when there are AJAX errors
+     * @param {Function} [options.onSelect] A callback for when a value is selected. Takes `(selectedValue, selectedId, selectedDisplayText)`.
      * @param {Array}    [options.suggestions] A list of suggestions, for when you have them around.
      * @param {Integer}  [options.resultLimit=10] How many suggestions to show on the dropdown.
      * @param {Integer}  [options.minText=3] How many characters the user needs to type before we list suggestions.
@@ -40,12 +44,14 @@ AutoComplete.prototype = {
             getSuggestionsURI: ['Function', null],
             suggestionsURIParam: ['String', 'input'],
             transformResponse: ['Function', null],
+            transformResponseRow: ['Function', function (row) { return { id: row, value: row, display: row }; }],
             targetClassName: ['String', 'autocomplete-target'],
             suggestionUlClassName: ['String', 'autocomplete-suggestions'],
             onAjaxError: ['Function', null],
             suggestions: ['Object', null],
             onSelect: ['Function', null],
             resultLimit: ['Integer', 10],
+            outputElement: ['Element', null],
             minText: ['Integer', 3],
             target: ['String', null]
         }, options || {}, this._element);
@@ -106,12 +112,8 @@ AutoComplete.prototype = {
 
         var keyCode = event.keyCode || event.which;
         if (keyCode === InkEvent.KEY_DOWN || keyCode === InkEvent.KEY_UP) {
-            if (target === this._element && keyCode === InkEvent.KEY_DOWN) {
-                // Focus first
-                focus(Ink.s('a', this._target));
-            } else {
-                this._focusRelative(target, keyCode === InkEvent.KEY_DOWN ? 'down' : 'up');
-            }
+            var downUp = keyCode === InkEvent.KEY_DOWN ? 'down' : 'up';
+            this._cycleFocus(target, downUp);
             InkEvent.stopDefault(event);
         }
 
@@ -121,13 +123,23 @@ AutoComplete.prototype = {
         }
 
         if (keyCode === InkEvent.KEY_TAB && target !== this._element) {
-            var data = InkElement.data(target);
-            if (data.value) {
-                this._element.value = data.value;
-            }
-
+            this._select(target);
             this.close();
             focus(this._element);
+        }
+    },
+
+    _cycleFocus: function (target, downUp) {
+        if (target === this._element) {
+            if (downUp === 'down') {
+                focus(Ink.s('a', this._target));
+            } else {
+                var links = this._target.getElementsByTagName('a');
+                focus(links[links.length - 1]);
+            }
+            return;
+        } else {
+            this._focusRelative(target, downUp);
         }
     },
 
@@ -148,6 +160,25 @@ AutoComplete.prototype = {
         }
 
         focus(Ink.s('[data-value]', li));
+    },
+
+    _select: function (data) {
+        if (Common.isDOMElement(data)) {
+            data = InkElement.data(data);
+            data.display = data.innerHTML;
+        }
+
+        var id = data.id || data.value;
+
+        if (!id) { return false; }
+
+        (this._options.outputElement || this._element).value = id;
+
+        if (typeof this._options.onSelect === 'function') {
+            this._options.onSelect.call(this, id, data.value, data.display);
+        }
+
+        return true;
     },
 
     _getFocusedValue: function () {
@@ -196,7 +227,7 @@ AutoComplete.prototype = {
 
         this.ajaxRequest = new Ajax(this._getSuggestionsURI(input), {
             method: 'get',
-            onSuccess: Ink.bindMethod(this, '_onAjaxSuccess'),
+            onSuccess: Ink.bindMethod(this, '_onAjaxSuccess', input),
             onFailure: Ink.bindMethod(this, '_onAjaxFailure')
         });
     },
@@ -211,8 +242,12 @@ AutoComplete.prototype = {
         var sanitized = input.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
         var re = new RegExp("^" + sanitized + "", "i");
 
+        suggestions = InkArray.map(suggestions, Ink.bind(function (suggestion) {
+            return this._options.transformResponseRow.call(this, suggestion);
+        }, this));
+
         suggestions = InkArray.filter(suggestions, function (suggestion) {
-            return suggestion.match(re);
+            return suggestion.value.match(re);
         });
 
         this._renderSuggestions(suggestions);
@@ -229,11 +264,11 @@ AutoComplete.prototype = {
         }
     },
 
-    _onAjaxSuccess: function(obj) {
+    _onAjaxSuccess: function(input, obj) {
         var res = this._digestAjaxResponse(obj);
 
-        if (typeof res.error !== 'object') {
-            this._renderSuggestions(res.suggestions);
+        if (!res.error && typeof res.error !== 'object') {
+            this._searchSuggestions(input, res.suggestions);
         } else if (this._options.onAjaxError) {
             this._options.onAjaxError(res.error);
         }
@@ -255,11 +290,8 @@ AutoComplete.prototype = {
 
     _onSuggestionClick: function(event) {
         var suggestion = InkEvent.element(event);
-        var targetValue = InkElement.data(suggestion).value;
 
-        if (targetValue !== undefined) {
-            if (this._options.onSelect) { this._options.onSelect(targetValue, this); }
-            this.setValue(targetValue);
+        if (this._select(suggestion)) {
             this.close();
             InkEvent.stopDefault(event);
         }
@@ -275,21 +307,27 @@ AutoComplete.prototype = {
             className: this._options.suggestionUlClassName
         });
 
-        var li;
-
-        var len = Math.min(aSuggestions.length, this._options.resultLimit);
-        for (var i = 0; i < len; i++) {
-            li = InkElement.create('li', {
+        ul.innerHTML = InkArray.map(aSuggestions, function (suggestion) {
+            var li = InkElement.create('li', {
                 insertBottom: ul
             });
 
-            InkElement.create('a', {
+            var a = InkElement.create('a', {
                 href: '#',
-                'data-value': aSuggestions[i],
-                setTextContent: aSuggestions[i],
-                insertBottom: li
+                'data-value': suggestion.value,
+                'data-id': suggestion.id || suggestion.value
             });
-        }
+            
+            if (suggestion.displayHTML !== undefined) {
+                a.innerHTML = suggestion.displayHTML;
+            } else {
+                InkElement.setTextContent(a, suggestion.display || suggestion.value);
+            }
+
+            li.appendChild(a);
+
+            return li.outerHTML;
+        }).join('');
 
         this._open();
 
@@ -316,11 +354,6 @@ AutoComplete.prototype = {
 
     _onClickWindow: function() {
         this.close();
-    },
-
-    setValue: function(value) {
-        //value = value.replace(/([^@]+)@(.*)/, "$1");
-        this._element.value = value;
     }
 };
 
