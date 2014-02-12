@@ -252,7 +252,7 @@ AutoComplete.prototype = {
         }
 
         if (this._options.outputElement) {
-            this._options.outputElement = Common.elOrSelector(this._options.target);
+            this._outputElement = Common.elOrSelector(this._options.target);
         }
 
         Css.addClassName(this._target, 'hide-all');
@@ -359,7 +359,7 @@ AutoComplete.prototype = {
 
         if (!id) { return false; }
 
-        if (this._options.outputElement) {
+        if (this._outputElement) {
             this._outputElement.value = id;  // This could be an ugly GUID
         }
 
@@ -439,7 +439,13 @@ AutoComplete.prototype = {
             return suggestion.value.match(re);
         });
 
+        if (typeof this._options.resultLimit === 'number') {
+            suggestions = suggestions.slice(0, this._options.resultLimit)
+        }
+
         this._renderSuggestions(suggestions);
+
+        return suggestions;
     },
 
     _digestAjaxResponse: function(response) {
