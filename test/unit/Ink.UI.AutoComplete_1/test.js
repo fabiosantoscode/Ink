@@ -109,14 +109,20 @@ Ink.requireModules(['Ink.UI.AutoComplete_1', 'Ink.Dom.Element_1', 'Ink.Dom.Css_1
         equal(transformResponseRow.lastCall.args[0], 'sugg2');
     });
 
+    testAutoComplete('resultLimit affects how many results are returned by _searchSuggestions', function (comp) {
+        var suggestions = ['aa', 'ab', 'ac']
+        equal(comp._searchSuggestions('a', suggestions).length, 2);
+        delete comp._options.resultLimit;
+        equal(comp._searchSuggestions('a', suggestions).length, 3);
+    }, { resultLimit: 2 });
+
     (function () {
         var spy = sinon.spy();
         typeSomethingAndTest('When clicking a suggestion, options.onSelect is called', function (instance, __, input, target) {
             var a = Selector.select('a[data-value="audi"]', target);
             Syn.click(a[0], function () {
                 ok(spy.calledOnce, 'onSelect called');
-                deepEqual(spy.lastCall.args[0], 'audi', 'onSelect called with suggestion, instance');
-                deepEqual(spy.lastCall.args[1], 'audi', 'onSelect called with suggestion, instance');
+                deepEqual(spy.lastCall.args[0].display, 'audi', 'onSelect called with suggestion, instance');
                 strictEqual(spy.lastCall.thisValue, instance, 'onSelect called with this=instance');
                 start();
             });
@@ -140,10 +146,10 @@ Ink.requireModules(['Ink.UI.AutoComplete_1', 'Ink.Dom.Element_1', 'Ink.Dom.Css_1
     }, {suggestionsURIParam: 'param', suggestionsURI: '/' });
 
     testAutoComplete('options.outputElement gets filled in with the new value', function (comp, _, input) {
-        comp._select({ id: 'urmom' });
-        equal(comp._options.outputElement.value, 'urmom', 'outputElement gets the selected value');
+        comp._select({ id: 'urmom', value: 'i' });
+        equal(comp._outputElement.value, 'urmom', 'outputElement gets the selected value');
         notEqual(input.value, 'urmom', 'NOT the input');
-    }, { outputElement: InkElement.create('input', { type: 'hidden' }) });
+    }, { outputElement: InkElement.create('input') });
 
     module('keyboard navigation');
 
