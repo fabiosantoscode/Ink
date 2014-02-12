@@ -31,8 +31,8 @@ AutoComplete.prototype = {
      * @param {String}   [options.suggestionsURI] URI of the endpoint to query for suggestions
      * @param {Function} [options.getSuggestionsURI] Function taking `(input value, autocomplete instance)` and returning the URL with suggestions.
      * @param {String}   [options.suggestionsURIParam='input'] Choose the URL parameter where we put the user input when getting suggestions. If you choose "asd", the url will be `"suggestionsURI?asd=user-input"`.
-     * @param {String}   [options.targetClassName='autocomplete-target'] The target of the suggestions list
-     * @param {String}   [options.suggestionUlClassName='autocomplete-target'] The target of the suggestions list
+     * @param {String}   [options.targetClassName='autocomplete-target'] className of the suggestions list container (it contains the suggestions list UL).
+     * @param {String}   [options.suggestionUlClassName='autocomplete-suggestions'] The className to be added to the suggestions UL.
      * @param {Function} [options.transformResponse] You can provide a function to digest a response from your endpoint into a format that AutoComplete understands. Takes `(Ink.Net.Ajax response)`, returns `{ suggestions: [], error: Error || null }`
      * @param {Function} [options.transformResponseRow=function(row){return{id:row,value:row,display:row};}] A function which takes the row from the Ajax response or your object, and returns an object `{ id, value, [optional] display }`. The "id" will be the second argument to onSelect when done, and the "display" is what gets displayed to the user. use "displayHTML" if you don't want HTML to be escaped.
      * @param {Function} [options.onAjaxError] A callback for when there are AJAX errors
@@ -49,7 +49,7 @@ AutoComplete.prototype = {
             suggestionsURI: ['String', null],
             getSuggestionsURI: ['Function', null],
             suggestionsURIParam: ['String', 'input'],
-            transformResponse: ['Function', function res() {  }],
+            transformResponse: ['Function', null],
             transformResponseRow: ['Function', function (row) { return { id: row, value: row, display: row }; }],
             targetClassName: ['String', 'autocomplete-target'],
             suggestionUlClassName: ['String', 'autocomplete-suggestions'],
