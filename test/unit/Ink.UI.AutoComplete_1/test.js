@@ -116,6 +116,19 @@ Ink.requireModules(['Ink.UI.AutoComplete_1', 'Ink.Dom.Element_1', 'Ink.Dom.Css_1
         equal(comp._searchSuggestions('a', suggestions).length, 3);
     }, { resultLimit: 2 });
 
+    testAutoComplete('When options.middleofstring is on, don\'t match the beginning of the string', function (comp) {
+        var fakeRe = sinon.spy(window, 'RegExp');
+        var suggestions = ['aMATCH', 'MATCHa']
+        comp._searchSuggestions('MATCH', suggestions);
+        notEqual(fakeRe.lastCall.args[0].charAt(0), '^')
+
+        comp._options.middleOfString = false;
+        comp._searchSuggestions('MATCH', suggestions);
+        equal(fakeRe.lastCall.args[0].charAt(0), '^');
+
+        fakeRe.restore();
+    }, { middleOfString: true });
+
     (function () {
         var spy = sinon.spy();
         typeSomethingAndTest('When clicking a suggestion, options.onSelect is called', function (instance, __, input, target) {

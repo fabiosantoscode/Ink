@@ -28,6 +28,8 @@ AutoComplete.prototype = {
      * @constructor
      *
      * @param {String|DOMElement} elem String or DOMElement for the input field
+     * @param {Object}   [options] Hash containing the following options:
+     * @param {Boolean}  [options.middleOfString=false] turn on to find matches in the middle of strings.
      * @param {String}   [options.suggestionsURI] URI of the endpoint to query for suggestions
      * @param {Function} [options.getSuggestionsURI] Function taking `(input value, autocomplete instance)` and returning the URL with suggestions.
      * @param {String}   [options.suggestionsURIParam='input'] Choose the URL parameter where we put the user input when getting suggestions. If you choose "asd", the url will be `"suggestionsURI?asd=user-input"`.
@@ -46,6 +48,7 @@ AutoComplete.prototype = {
         this._element = Common.elOrSelector(elem);
 
         this._options = Common.options({
+            middleOfString: ['Boolean', false],
             suggestionsURI: ['String', null],
             getSuggestionsURI: ['Function', null],
             suggestionsURIParam: ['String', 'input'],
@@ -253,7 +256,9 @@ AutoComplete.prototype = {
 
         // https://github.com/isaacs/minimatch/blob/master/minimatch.js
         var sanitized = input.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
-        var re = new RegExp("^" + sanitized + "", "i");
+
+        var start = this._options.middleOfString ? '' : '^';
+        var re = new RegExp(start + sanitized, "i");
 
         suggestions = InkArray.map(suggestions, Ink.bind(function (suggestion) {
             return this._options.transformResponseRow.call(this, suggestion);
