@@ -5,7 +5,7 @@ Ink.requireModules(['Ink.UI_1'], function(UI) {
     module('createUIComponent', {
         setup: function () {
             testFunc = function testFunc () {
-                UI.BaseUIComponent.call(this);
+                UI.BaseUIComponent.apply(this, arguments);
             }
 
             testFunc._name = 'TestModule_1';
@@ -31,7 +31,7 @@ Ink.requireModules(['Ink.UI_1'], function(UI) {
     test('Makes the module inherit BaseUIComponent', function () {
         UI.createUIComponent(testFunc)
         console.log(testFunc.prototype)
-        ok((new testFunc()) instanceof UI.BaseUIComponent);
+        ok((new testFunc(document.createElement('div'))) instanceof UI.BaseUIComponent);
     });
     test('Doesn\'t hurt existing prototype', function () {
         testFunc.prototype.foobarbaz = 'foobarbaz'

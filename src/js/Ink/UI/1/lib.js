@@ -1,5 +1,4 @@
 Ink.createModule('Ink.UI', '1', ['Ink.UI.Common_1'], function (Common) {
-    /* jshint maxcomplexity: 4 */
     'use strict';
 
     function warnStub() {
@@ -48,7 +47,7 @@ Ink.createModule('Ink.UI', '1', ['Ink.UI.Common_1'], function (Common) {
         this._element = Common.elsOrSelector(element,
             _name + ': An element with this selector (' + element + ') was not found!')[0];
 
-        // Change Common.options's signature? the below looks better, is more manageable
+        // TODO Change Common.options's signature? the below looks better, more manageable
         // var options = Common.options({
         //     element: this._element,
         //     modName: constructor._name,
@@ -58,17 +57,19 @@ Ink.createModule('Ink.UI', '1', ['Ink.UI.Common_1'], function (Common) {
 
         this._options = Common.options(_name, constructor._optionDefinition, options, this._element);
 
-        if (validate(this, constructor, _name) === false) { return; }
+        var isValidInstance = validate(this, constructor, _name) === true;
 
-        this._init.apply(this, arguments);
+        if (isValidInstance && typeof this._init === 'function') {
+            this._init.apply(this, arguments);
+        }
     }
 
     // TODO BaseUIComponent.setGlobalOptions = function () {}
     // TODO BaseUIComponent.createMany = function (selector) {}
 
     Ink.extendObj(BaseUIComponent.prototype, {
-        // getElement
-        // getOption
+        // TODO getElement
+        // TODO getOption
     });
 
     return {
