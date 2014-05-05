@@ -30,11 +30,11 @@ Ink.createModule('Ink.UI', '1', ['Ink.UI.Common_1'], function (Common) {
         }
     }
 
-    function BaseUIComponent(element) {
+    function BaseUIComponent(element, options) {
         var constructor = this.constructor;
         var _name = constructor._name;
 
-        if (constructor === BaseUIComponent) {
+        if (this.constructor === BaseUIComponent) {
             // The caller was "someModule.prototype = new BaseUIComponent" (below, on this file)
             // so it doesn't make sense to construct anything.
             return;
@@ -46,7 +46,7 @@ Ink.createModule('Ink.UI', '1', ['Ink.UI.Common_1'], function (Common) {
         }
 
         this._element = Common.elsOrSelector(element,
-            _name + ': An element with this selector (' + element + ') was not found!');
+            _name + ': An element with this selector (' + element + ') was not found!')[0];
 
         // Change Common.options's signature? the below looks better, is more manageable
         // var options = Common.options({
@@ -56,7 +56,7 @@ Ink.createModule('Ink.UI', '1', ['Ink.UI.Common_1'], function (Common) {
         //     defaults: constructor._globalDefaults
         // });
 
-        this._options = Common.options(_name, constructor._optionDefinition, this._element);
+        this._options = Common.options(_name, constructor._optionDefinition, options, this._element);
 
         if (validate(this, constructor, _name) === false) { return; }
 
@@ -67,7 +67,8 @@ Ink.createModule('Ink.UI', '1', ['Ink.UI.Common_1'], function (Common) {
     // TODO BaseUIComponent.createMany = function (selector) {}
 
     Ink.extendObj(BaseUIComponent.prototype, {
-        
+        // getElement
+        // getOption
     });
 
     return {
@@ -100,9 +101,10 @@ Ink.createModule('Ink.UI', '1', ['Ink.UI.Common_1'], function (Common) {
             // Extend the instance methods and props
             var _oldProto = theConstructor.prototype;
             theConstructor.prototype = new BaseUIComponent();
-            for (var k in _oldProto) if (k !== 'constructor' && _oldProto.hasOwnProperty(k)) {
+            for (var k in _oldProto) if (_oldProto.hasOwnProperty(k)) {
                 theConstructor.prototype[k] = _oldProto[k];
             }
+            theConstructor.prototype.constructor = theConstructor;
             // Extend static methods
             Ink.extendObj(theConstructor, BaseUIComponent);
         }

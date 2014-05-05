@@ -621,6 +621,7 @@ Ink.createModule('Ink.UI.Common', '1', ['Ink.Dom.Element_1', 'Ink.Net.Ajax_1','I
                     Ink.warn('Creating more than one ' + nameWithoutVersion + '.',
                             '(Was creating a ' + nameWithoutVersion + ' on:', elm, '.' +
                             'Existing element was: ', instances[i]._element);
+                    return false;
                 }
             }
 
@@ -629,6 +630,8 @@ Ink.createModule('Ink.UI.Common', '1', ['Ink.Dom.Element_1', 'Ink.Net.Ajax_1','I
                     thing._name ||
                     '').replace(/_.*?$/, '');
             }
+
+            return true;
         },
 
         /**
@@ -640,17 +643,22 @@ Ink.createModule('Ink.UI.Common', '1', ['Ink.Dom.Element_1', 'Ink.Net.Ajax_1','I
          * @param  {DOMElement} el                  DOM Element to associate with the object.
          */
         registerInstance: function(inst, el) {
-            if (!inst || inst._instanceId) { return; }
+            if (!inst) { return; }
 
             if (!this.isDOMElement(el)) { throw new TypeError('Ink.UI.Common.registerInstance: The element passed in is not a DOM element!'); }
 
-            Common._warnDoubleInstantiation(el, inst);
+            if (Common._warnDoubleInstantiation(el, inst) === false) {
+                return false;
+            }
+
             var id = 'instance' + (++lastIdNum);
             instances[id] = inst;
             inst._instanceId = id;
             var dataInst = el.getAttribute('data-instance');
             dataInst = (dataInst !== null) ? [dataInst, id].join(' ') : id;
             el.setAttribute('data-instance', dataInst);
+
+            return true;
         },
 
         /**
