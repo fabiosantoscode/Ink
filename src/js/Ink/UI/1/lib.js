@@ -1,7 +1,9 @@
 Ink.createModule('Ink.UI', '1', ['Ink.UI.Common_1'], function (Common) {
-    /* jshint maxcomplexity: 3 */
+    /* jshint maxcomplexity: 4 */
+    'use strict';
 
     function warnStub() {
+        /* jshint validthis: true */
         if (typeof this.constructor !== 'function') { return; }
         Ink.warn('You called a method on an incorrectly instantiated ' + this.constructor._name + ' component. Check the warnings above to see what went wrong.');
     }
@@ -32,6 +34,14 @@ Ink.createModule('Ink.UI', '1', ['Ink.UI.Common_1'], function (Common) {
         this._element = Common.elsOrSelector(element,
             _name + ': An element with this selector (' + element + ') was not found!');
 
+        // Change Common.options's signature? the below looks better, is more manageable
+        // var options = Common.options({
+        //     element: this._element,
+        //     modName: constructor._name,
+        //     options: constructor._optionDefinition,
+        //     defaults: constructor._globalDefaults
+        // });
+
         this._options = Common.options(_name, constructor._optionDefinition, this._element);
 
         if (typeof this._validate === 'function') {
@@ -43,11 +53,6 @@ Ink.createModule('Ink.UI', '1', ['Ink.UI.Common_1'], function (Common) {
                 return;
             }
         }
-
-        var options = Common.options({
-            modName: constructor._name,
-            options: constructor._optionDefinition,
-        });
 
         this._init.apply(this, arguments);
     }
@@ -61,18 +66,23 @@ Ink.createModule('Ink.UI', '1', ['Ink.UI.Common_1'], function (Common) {
 
     return {
         BaseUIComponent: BaseUIComponent,
-        createUIComponent: function (theConstructor) {
+        createUIComponent: function (theConstructor, options) {
+            options = options || {};
+
             function assert(test, msg) {
                 if (!test) {
-                    throw new Error('Ink.UI_1.createUIComponent: ' + msg)
+                    throw new Error('Ink.UI_1.createUIComponent: ' + msg);
                 }
             }
 
             function assertProp(prop, propType, message) {
-                assert(!prop in theConstructor, 
+                var propVal = theConstructor[prop] || options[prop];
+                // Check that the property was passed
+                assert(typeof propVal !== 'undefined',
                     theConstructor + ' doesn\'t have a "' + prop + '" property. ' + message);
-                assert(propType && typeof theConstructor[prop] !== propType,
-                    theConstructor + '.' + prop + ' doesn\'t have type ' + propType + '. ' + message);
+                // Check that its type is correct
+                assert(propType && typeof propVal === propType,
+                    'typeof ' + theConstructor + '.' + prop + ' is not "' + propType + '". ' + message);
             }
 
             assert(typeof theConstructor === 'function',
@@ -81,13 +91,17 @@ Ink.createModule('Ink.UI', '1', ['Ink.UI.Common_1'], function (Common) {
             assertProp('_name', 'string', 'This property is used for error ' +
                 'messages. Set it to the full module path and version (Ink.My.Module_1).');
             assertProp('_optionDefinition', 'object', 'This property contains the ' +
-                'default options.');
+                'option names, types and defaults. See Ink.UI.Common.options() for reference.');
 
             // Extend the instance methods and props
+            var _oldProto = theConstructor.prototype;
             theConstructor.prototype = new BaseUIComponent();
+            for (var k in _oldProto) if (k !== 'constructor' && _oldProto.hasOwnProperty(k)) {
+                theConstructor.prototype[k] = _oldProto[k];
+            }
             // Extend static methods
             Ink.extendObj(theConstructor, BaseUIComponent);
         }
-    }
+    };
 });
 
