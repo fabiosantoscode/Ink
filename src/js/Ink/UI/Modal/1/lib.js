@@ -171,7 +171,10 @@ Ink.createModule('Ink.UI.Modal', '1', ['Ink.UI.Common_1','Ink.Dom.Event_1','Ink.
         }
     };
 
+    Modal._name = 'Modal_1';
+
     Modal.prototype = {
+        constructor: Modal,
 
         /**
          * Responsible for repositioning the modal

@@ -65,7 +65,10 @@ Ink.createModule('Ink.UI.SortableList', '1', ['Ink.UI.Common_1','Ink.Dom.Css_1',
         this._init();
     };
 
+    SortableList._name = 'SortableList_1';
+
     SortableList.prototype = {
+        constructor: SortableList,
 
         /**
          * Init function called by the constructor.

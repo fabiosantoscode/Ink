@@ -183,7 +183,11 @@ Ink.createModule('Ink.UI.DatePicker', '1', ['Ink.UI.Common_1','Ink.Dom.Event_1',
         this._init();
     };
 
+    DatePicker._name = 'DatePicker_1';
+
     DatePicker.prototype = {
+        constructor: DatePicker;
+
         version: '0.1',
 
         /**

@@ -36,7 +36,10 @@ Ink.createModule('Ink.UI.ProgressBar', '1', ['Ink.UI.Common_1', 'Ink.Dom.Selecto
         this._init();
     };
 
+    ProgressBar._name = 'ProgressBar_1';
+
     ProgressBar.prototype = {
+        constructor: ProgressBar,
 
         /**
          * Init function called by the constructor

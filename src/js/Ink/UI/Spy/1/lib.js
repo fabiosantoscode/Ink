@@ -141,7 +141,11 @@ Ink.createModule('Ink.UI.Spy', '1', ['Ink.UI.Common_1','Ink.Dom.Event_1','Ink.Do
         this._init();
     };
 
+    Spy._name = 'Spy_1';
+
     Spy.prototype = {
+        constructor: Spy,
+
         /**
          * Init function called by the constructor
          * 

@@ -11,7 +11,11 @@ var LazyLoad = function(selector, options) {
     this._init(selector, options);
 };
 
+LazyLoad._name = 'LazyLoad_1';
+
 LazyLoad.prototype = {
+    constructor: LazyLoad,
+
     /**
      * Stops the browser from loading a barrage of content at once.
      *

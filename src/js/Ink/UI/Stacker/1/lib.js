@@ -11,7 +11,11 @@ function Stacker(selector, options) {
     this._init(selector, options);
 }
 
+Stacker._name = 'Stacker_1';
+
 Stacker.prototype = {
+    constructor: Stacker,
+
     /**
      * This module combines several stacks of items together, in smaller screen sizes.
      *

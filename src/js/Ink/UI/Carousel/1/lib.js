@@ -99,7 +99,11 @@ Ink.createModule('Ink.UI.Carousel', '1',
         Common.registerInstance(this, this._element);
     };
 
+    Carousel._name = 'Carousel_1';
+
     Carousel.prototype = {
+        constructor: Carousel,
+
         /**
          * Repositions elements around.
          * Measure the carousel once again, adjusting the involved elements' sizes. This is called automatically when the window resizes, in order to cater for changes from responsive media queries, for instance.

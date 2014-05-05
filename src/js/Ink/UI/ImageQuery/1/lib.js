@@ -89,6 +89,8 @@ Ink.createModule('Ink.UI.ImageQuery', '1', ['Ink.UI.Common_1','Ink.Dom.Event_1',
         this._init();
     };
 
+    ImageQuery._name = 'ImageQuery_1';
+
     ImageQuery.prototype = {
 
         /**

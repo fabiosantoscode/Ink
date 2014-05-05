@@ -14,7 +14,11 @@ Ink.createModule('Ink.UI.Dropdown', '1', ['Ink.UI.Common_1', 'Ink.UI.Toggle_1', 
         this._init(trigger, options);
     }
 
+    Dropdown._name = 'Dropdown_1';
+
     Dropdown.prototype = {
+        constructor: Dropdown,
+
         /**
          * @class Ink.UI.Dropdown
          *

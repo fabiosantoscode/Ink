@@ -63,6 +63,8 @@ Ink.createModule('Ink.UI.Animate', 1, ['Ink.UI.Common_1', 'Ink.Dom.Event_1', 'In
         Common.registerInstance(this, this._element);
     }
 
+    Animate._name = 'Animate_1';
+
     Animate.prototype.animate = function () {
         Animate.animate(this._element, this._options.animation, this._options);
     };

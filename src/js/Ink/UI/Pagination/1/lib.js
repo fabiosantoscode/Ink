@@ -132,7 +132,10 @@ Ink.createModule('Ink.UI.Pagination', '1',
         this._init();
     };
 
+    Pagination._name = 'Pagination_1';
+
     Pagination.prototype = {
+        constructor: Pagination,
 
         /**
          * Init function called by the constructor

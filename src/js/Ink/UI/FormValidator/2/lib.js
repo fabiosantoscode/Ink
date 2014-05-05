@@ -693,6 +693,8 @@ Ink.createModule('Ink.UI.FormValidator', '2', [ 'Ink.UI.Common_1','Ink.Dom.Eleme
         this._init();
     };
 
+    FormValidator._name = 'FormValidator_1';
+
     /**
      * Sets or modifies validation functions
      *
@@ -768,6 +770,8 @@ Ink.createModule('Ink.UI.FormValidator', '2', [ 'Ink.UI.Common_1','Ink.Dom.Eleme
     };
 
     FormValidator.prototype = {
+        constructor: FormValidator,
+
         _init: function(){
 
         },
