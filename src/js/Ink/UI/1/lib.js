@@ -16,7 +16,21 @@ Ink.createModule('Ink.UI', '1', ['Ink.UI.Common_1'], function (Common) {
         }
     }
 
-    function BaseUIComponent(element, options) {
+    function validate(instance, constructor, name) {
+        var err;
+        if (typeof instance._validate !== 'function') { return true; }
+
+        err = instance._validate();
+
+        if (err) {
+            stub(constructor.prototype, instance);
+            stub(BaseUIComponent.prototype, instance);
+            Ink.error('Error creating ' + name + '. ' + (typeof err === 'string' ? err : ''));
+            return false;
+        }
+    }
+
+    function BaseUIComponent(element) {
         var constructor = this.constructor;
         var _name = constructor._name;
 
@@ -44,15 +58,7 @@ Ink.createModule('Ink.UI', '1', ['Ink.UI.Common_1'], function (Common) {
 
         this._options = Common.options(_name, constructor._optionDefinition, this._element);
 
-        if (typeof this._validate === 'function') {
-            var err;
-            if ((err = this._validate(element, selector))) {
-                stub(constructor.prototype, this);
-                stub(BaseUIComponent.prototype, this);
-                Ink.error('Error creating ' + _name + (err || ''));
-                return;
-            }
-        }
+        if (validate(this, constructor, _name) === false) { return; }
 
         this._init.apply(this, arguments);
     }
@@ -66,9 +72,7 @@ Ink.createModule('Ink.UI', '1', ['Ink.UI.Common_1'], function (Common) {
 
     return {
         BaseUIComponent: BaseUIComponent,
-        createUIComponent: function (theConstructor, options) {
-            options = options || {};
-
+        createUIComponent: function (theConstructor) {
             function assert(test, msg) {
                 if (!test) {
                     throw new Error('Ink.UI_1.createUIComponent: ' + msg);
@@ -76,7 +80,7 @@ Ink.createModule('Ink.UI', '1', ['Ink.UI.Common_1'], function (Common) {
             }
 
             function assertProp(prop, propType, message) {
-                var propVal = theConstructor[prop] || options[prop];
+                var propVal = theConstructor[prop];
                 // Check that the property was passed
                 assert(typeof propVal !== 'undefined',
                     theConstructor + ' doesn\'t have a "' + prop + '" property. ' + message);
