@@ -5,7 +5,7 @@ Ink.requireModules(['Ink.UI_1'], function(UI) {
     var testFunc;
     module('createUIComponent', {
         setup: function () {
-            testFunc = function () {}
+            testFunc = function testFunc () {}
         }
     })
 
@@ -20,8 +20,9 @@ Ink.requireModules(['Ink.UI_1'], function(UI) {
     });
     test('Fails on constructors without required properties', function () {
         throwsWithArgument(testFunc);
-        testFunc.moduleName = 'TestModule_1';
+        testFunc._name = 'TestModule_1';
         testFunc._optionDefinition = {};
+        debugger;
         UI.createUIComponent(testFunc);
         ok(true);
     });

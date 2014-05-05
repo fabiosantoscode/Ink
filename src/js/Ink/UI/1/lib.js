@@ -3,7 +3,7 @@ Ink.createModule('Ink.UI', '1', ['Ink.UI.Common_1'], function (Common) {
 
     function warnStub() {
         if (typeof this.constructor !== 'function') { return; }
-        Ink.warn('You called a method on an incorrectly instantiated ' + this.constructor.moduleName + ' component. Check the warnings above to see what went wrong.');
+        Ink.warn('You called a method on an incorrectly instantiated ' + this.constructor._name + ' component. Check the warnings above to see what went wrong.');
     }
 
     function stub(prototype, obj) {
@@ -16,36 +16,36 @@ Ink.createModule('Ink.UI', '1', ['Ink.UI.Common_1'], function (Common) {
 
     function BaseUIComponent(element, options) {
         var constructor = this.constructor;
-        var moduleName = constructor.moduleName;
+        var _name = constructor._name;
 
         if (constructor === BaseUIComponent) {
-            // The caller was "someModule.prototype = new BaseUIComponent"
+            // The caller was "someModule.prototype = new BaseUIComponent" (below, on this file)
             // so it doesn't make sense to construct anything.
             return;
         }
 
         if (!element) {
-            Ink.error(new Error(moduleName + ': You need to pass an element or a selector as the first argument to "new ' + moduleName + '()"'));
+            Ink.error(new Error(_name + ': You need to pass an element or a selector as the first argument to "new ' + _name + '()"'));
             return;
         }
 
         this._element = Common.elsOrSelector(element,
-            moduleName + ': An element with this selector (' + element + ') was not found!');
+            _name + ': An element with this selector (' + element + ') was not found!');
 
-        this._options = Common.options(moduleName, constructor._optionDefinition, this._element);
+        this._options = Common.options(_name, constructor._optionDefinition, this._element);
 
         if (typeof this._validate === 'function') {
             var err;
             if ((err = this._validate(element, selector))) {
                 stub(constructor.prototype, this);
                 stub(BaseUIComponent.prototype, this);
-                Ink.error('Error creating ' + moduleName + (err || ''));
+                Ink.error('Error creating ' + _name + (err || ''));
                 return;
             }
         }
 
         var options = Common.options({
-            modName: constructor.moduleName,
+            modName: constructor._name,
             options: constructor._optionDefinition,
         });
 
@@ -78,9 +78,8 @@ Ink.createModule('Ink.UI', '1', ['Ink.UI.Common_1'], function (Common) {
             assert(typeof theConstructor === 'function',
                 'constructor argument is not a function!');
 
-            assertProp('moduleName', 'string', 'This property is used for error ' +
-                'messages. Use the full module name (with all the namespaces ' +
-                'and the version).');
+            assertProp('_name', 'string', 'This property is used for error ' +
+                'messages. Set it to the full module path and version (Ink.My.Module_1).');
             assertProp('_optionDefinition', 'object', 'This property contains the ' +
                 'default options.');
 
