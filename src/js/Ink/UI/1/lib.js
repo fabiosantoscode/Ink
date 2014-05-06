@@ -3,7 +3,7 @@ Ink.createModule('Ink.UI', '1', ['Ink.UI.Common_1'], function (Common) {
 
     function warnStub() {
         /* jshint validthis: true */
-        if (typeof this.constructor !== 'function') { return; }
+        if (!this || this === window || typeof this.constructor !== 'function') { return; }
         Ink.warn('You called a method on an incorrectly instantiated ' + this.constructor._name + ' component. Check the warnings above to see what went wrong.');
     }
 
@@ -15,19 +15,6 @@ Ink.createModule('Ink.UI', '1', ['Ink.UI.Common_1'], function (Common) {
         }
     }
 
-    function validate(instance, constructor, name) {
-        var err;
-        if (typeof instance._validate !== 'function') { return true; }
-
-        err = instance._validate();
-
-        if (err) {
-            stub(constructor.prototype, instance);
-            stub(BaseUIComponent.prototype, instance);
-            Ink.error('Error creating ' + name + '. ' + (typeof err === 'string' ? err : ''));
-            return false;
-        }
-    }
 
     function BaseUIComponent(element, options) {
         var constructor = this.constructor;
@@ -57,12 +44,61 @@ Ink.createModule('Ink.UI', '1', ['Ink.UI.Common_1'], function (Common) {
 
         this._options = Common.options(_name, constructor._optionDefinition, options, this._element);
 
-        var isValidInstance = validate(this, constructor, _name) === true;
+        var isValidInstance = BaseUIComponent._validateInstance(this) === true;
 
         if (isValidInstance && typeof this._init === 'function') {
             this._init.apply(this, arguments);
         }
+
+        if (!isValidInstance) {
+            BaseUIComponent._stubInstance(this, constructor, _name);
+        }
     }
+
+    /**
+     * Calls the `instance`'s _validate() method so it can validate itself.
+     *
+     * Returns false if the method exists, was called, but no Error was returned or thrown.
+     *
+     * @method _validateInstance
+     * @private
+     */
+    BaseUIComponent._validateInstance = function (instance) {
+        var err;
+
+        if (typeof instance._validate !== 'function') { return true; }
+
+        try {
+            err = instance._validate();
+        } catch (e) {
+            err = e;
+        }
+
+        if (err instanceof Error) {
+            instance._validationError = err;
+            return false;
+        }
+
+        return true;
+    };
+
+
+    /**
+     * Replaces every method in the instance with stub functions which just call Ink.warn().
+     *
+     * This avoids breaking the page when there are errors.
+     *
+     * @method _stubInstance
+     * @param instance
+     * @param constructor
+     * @param name
+     * @private
+     */
+    BaseUIComponent._stubInstance = function (instance, constructor, name) {
+        stub(constructor.prototype, instance);
+        stub(BaseUIComponent.prototype, instance);
+        Ink.warn(name + ' was not correctly created. ' + (instance._validationError || ''));
+    };
 
     // TODO BaseUIComponent.setGlobalOptions = function () {}
     // TODO BaseUIComponent.createMany = function (selector) {}
