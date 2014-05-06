@@ -104,8 +104,18 @@ Ink.createModule('Ink.UI', '1', ['Ink.UI.Common_1'], function (Common) {
     // TODO BaseUIComponent.createMany = function (selector) {}
 
     Ink.extendObj(BaseUIComponent.prototype, {
-        // TODO getElement
-        // TODO getOption
+        getOption: function (name) {
+            if (this.constructor && !(name in this.constructor._optionDefinition)) {
+                Ink.error('"' + name + '" is not an option for ' + this.constructor._name);
+                return undefined;
+            }
+
+            return this._options[name];
+        },
+
+        getElement: function () {
+            return this._element;
+        }
     });
 
     return {

@@ -136,4 +136,12 @@ Ink.requireModules(['Ink.UI_1'], function(UI) {
         mockInstance.foo();
         ok(Ink.warn.calledTwice);
     }));
+
+    var baseUIProto = UI.BaseUIComponent.prototype;
+    test('#getOption and #getElement', function() {
+        var inst = new testFunc(testEl, { foo: 'qux' });
+
+        strictEqual(inst.getOption('foo'), 'qux');
+        strictEqual(inst.getElement(), testEl);
+    });
 });
