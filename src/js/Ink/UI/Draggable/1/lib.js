@@ -51,7 +51,7 @@ Ink.createModule("Ink.UI.Draggable","1",["Ink.Dom.Element_1", "Ink.Dom.Event_1",
     Draggable._name = 'Draggable_1';
 
     Draggable.prototype = {
-        constructor: Draggable;
+        constructor: Draggable,
 
         /**
          * Init function called by the constructor
