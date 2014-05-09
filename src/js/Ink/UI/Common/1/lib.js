@@ -616,6 +616,8 @@ Ink.createModule('Ink.UI.Common', '1', ['Ink.Dom.Element_1', 'Ink.Net.Ajax_1','I
 
             var nameWithoutVersion = getName(newInstance);
 
+            if (!nameWithoutVersion) { return; }
+
             for (var i = 0, len = instances.length; i < len; i++) {
                 if (nameWithoutVersion === getName(instances[i])) {
                     Ink.warn('Creating more than one ' + nameWithoutVersion + '.',
@@ -626,7 +628,7 @@ Ink.createModule('Ink.UI.Common', '1', ['Ink.Dom.Element_1', 'Ink.Net.Ajax_1','I
             }
 
             function getName(thing) {
-                return ((thing.constructor && (thing.constructor._name || thing.constructor.name)) ||
+                return ((thing.constructor && (thing.constructor._name)) ||
                     thing._name ||
                     '').replace(/_.*?$/, '');
             }
