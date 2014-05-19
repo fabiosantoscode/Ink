@@ -620,9 +620,26 @@ Ink.createModule('Ink.UI.Common', '1', ['Ink.Dom.Element_1', 'Ink.Net.Ajax_1','I
 
             for (var i = 0, len = instances.length; i < len; i++) {
                 if (nameWithoutVersion === getName(instances[i])) {
+                    // Yes, I am using + to concatenate and , to split
+                    // arguments.
+                    //
+                    // Elements can't be concatenated with strings, but if
+                    // they are passed in an argument, modern debuggers will
+                    // pretty-print them and make it easy to find them in the
+                    // element inspector.
+                    //
+                    // On the other hand, if strings are passed as different
+                    // arguments, they get pretty printed. And the pretty
+                    // print of a string has quotes around it.
+                    //
+                    // If some day people find out that strings are not
+                    // just text and they start preserving contextual
+                    // information, then by all means change this to a
+                    // regular concatenation.
+                    //
+                    // But they won't. So don't change this.
                     Ink.warn('Creating more than one ' + nameWithoutVersion + '.',
-                            '(Was creating a ' + nameWithoutVersion + ' on:', elm, '.' +
-                            'Existing element was: ', instances[i]._element);
+                            '(Was creating a ' + nameWithoutVersion + ' on:', elm, ').')
                     return false;
                 }
             }
