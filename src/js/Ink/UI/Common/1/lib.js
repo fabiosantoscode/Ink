@@ -796,9 +796,17 @@ Ink.createModule('Ink.UI.Common', '1', ['Ink.Dom.Element_1', 'Ink.Net.Ajax_1','I
         var _name = constructor._name;
 
         if (this.constructor === BaseUIComponent) {
-            // The caller was "someModule.prototype = new BaseUIComponent" (below, on this file)
+            // The caller was "someModule.prototype = new BaseUIComponent" (below, on this module)
             // so it doesn't make sense to construct anything.
             return;
+        }
+
+        if (!this || this === window) {
+            throw new Error('Use "new InkComponent()" instead of "InkComponent()"');
+        }
+
+        if (this && !(this instanceof BaseUIComponent)) {
+            throw new Error('You forgot to call Ink.UI.Common.createUIComponent() on this module!');
         }
 
         if (!element) {
@@ -822,11 +830,18 @@ Ink.createModule('Ink.UI.Common', '1', ['Ink.Dom.Element_1', 'Ink.Net.Ajax_1','I
         var isValidInstance = BaseUIComponent._validateInstance(this) === true;
 
         if (isValidInstance && typeof this._init === 'function') {
-            this._init.apply(this, arguments);
+            try {
+                this._init.apply(this, arguments);
+            } catch(e) {
+                isValidInstance = false;
+                Ink.error(e);
+            }
         }
 
         if (!isValidInstance) {
             BaseUIComponent._stubInstance(this, constructor, _name);
+        } else {
+            Common.registerInstance(this, this._element);
         }
     }
 

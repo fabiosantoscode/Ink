@@ -350,6 +350,15 @@ Ink.requireModules(['Ink.UI.Common_1', 'Ink.Dom.Event_1', 'Ink.Dom.Element_1', '
         ok(Common.BaseUIComponent._validateInstance.calledWith(instance));
     }));
 
+    test('its constructor: calls Common.registerInstance', sinon.test(function () {
+        this.stub(Common, 'registerInstance');
+
+        var instance = new testFunc(testEl, testOpts);
+
+        ok(Common.registerInstance.calledOnce);
+        ok(Common.registerInstance.calledWith(instance, testEl));
+    }));
+
     test('its constructor: if BaseUIComponent._validateInstance returns false, stubs the instance by calling BaseUIComponent._stubInstance', sinon.test(function () {
         this.stub(Common.BaseUIComponent, '_stubInstance');
         var stub = this.stub(Common.BaseUIComponent, '_validateInstance');
