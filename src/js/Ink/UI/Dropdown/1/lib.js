@@ -6,19 +6,29 @@
  *
  * @version 1
  */
- 
+
 Ink.createModule('Ink.UI.Dropdown', '1', ['Ink.UI.Common_1', 'Ink.UI.Toggle_1', 'Ink.Dom.Event_1', 'Ink.Dom.Element_1'], function(Common, Toggle, InkEvent, InkElement) {
     'use strict';
 
     function Dropdown(trigger, options) {
-        this._init(trigger, options);
+        Common.BaseUIComponent.apply(this, arguments);
     }
 
     Dropdown._name = 'Dropdown_1';
 
-    Dropdown.prototype = {
-        constructor: Dropdown,
+    Dropdown._optionDefinition = {
+        'target':           ['Element'],
+        'hoverOpen':        ['Number', null],
+        'dismissOnInsideClick': ['Boolean', false],
+        'dismissOnOutsideClick': ['Boolean', true],
+        'dismissAfter':     ['Number', null],
+        'onInsideClick':    ['Function', null],
+        'onOutsideClick':   ['Function', null],
+        'onOpen':           ['Function', null],
+        'onDismiss':        ['Function', null]
+    }
 
+    Dropdown.prototype = {
         /**
          * @class Ink.UI.Dropdown
          *
@@ -30,19 +40,6 @@ Ink.createModule('Ink.UI.Dropdown', '1', ['Ink.UI.Common_1', 'Ink.UI.Toggle_1', 
          * @sample Ink_UI_Dropdown_1.html
          */
         _init: function(trigger, options) {
-            this._element = Common.elOrSelector(trigger);
-            this._options = Common.options('Ink.UI.Dropdown_1', {
-                'target':           ['Element'],
-                'hoverOpen':        ['Number', null],
-                'dismissOnInsideClick': ['Boolean', false],
-                'dismissOnOutsideClick': ['Boolean', true],
-                'dismissAfter':     ['Number', null],
-                'onInsideClick':    ['Function', null],
-                'onOutsideClick':   ['Function', null],
-                'onOpen':           ['Function', null],
-                'onDismiss':        ['Function', null]
-            }, options || {}, this._element);
-
             this._toggle = new Toggle(this._element, {
                 target: this._options.target,
                 closeOnInsideClick: null,
@@ -64,8 +61,6 @@ Ink.createModule('Ink.UI.Dropdown', '1', ['Ink.UI.Common_1', 'Ink.UI.Toggle_1', 
             InkEvent.observe(this._options.target, 'click', Ink.bindMethod(this, '_onInsideClick'));
             // to call dismissOnOutsideClick and onOutsideClick
             InkEvent.observe(document, 'click', Ink.bindMethod(this, '_onOutsideClick'));
-
-            Common.registerInstance(this, this._element);
         },
 
         /**
@@ -197,6 +192,8 @@ Ink.createModule('Ink.UI.Dropdown', '1', ['Ink.UI.Common_1', 'Ink.UI.Toggle_1', 
             }
         }
     };
+
+    Common.createUIComponent(Dropdown);
 
     return Dropdown;
 });
